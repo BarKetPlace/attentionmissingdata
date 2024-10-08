@@ -6,7 +6,7 @@ CFLAGS=-Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstac
 includes=-I/home/anthon@ad.cmm.se/projects/dataintegration/pyenv/lib/python3.10/site-packages/torch/include -I/home/anthon@ad.cmm.se/projects/dataintegration/pyenv/lib/python3.10/site-packages/torch/include/torch/csrc/api/include -I/home/anthon@ad.cmm.se/projects/dataintegration/pyenv/lib/python3.10/site-packages/torch/include/TH -I/home/anthon@ad.cmm.se/projects/dataintegration/pyenv/lib/python3.10/site-packages/torch/include/THC -I/home/anthon@ad.cmm.se/projects/dataintegration/pyenv/include -I/usr/include/python3.10 
 
 
-all: $(dir)/causal_product_numerator_cpu.cpython-310-x86_64-linux-gnu.so $(dir)/causal_product_denominator_cpu.cpython-310-x86_64-linux-gnu.so
+all: $(dir)/causal_product_numerator_cpu.cpython-310-x86_64-linux-gnu.so
 
 $(dir)/causal_product_%_cpu.cpython-310-x86_64-linux-gnu.so: $(dir)/causal_product_%_cpu.o 
 	x86_64-linux-gnu-g++ $(CLFLAGS) $^ $(LFLAGS) -o $@

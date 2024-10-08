@@ -126,7 +126,7 @@ void causal_dot_numerator_product(
             //float *k_sump = k_sum.data_ptr<float>();
             
             for (int l=0; l<L; l++) {
-                std::cout << "l="<<l<<", tq[l]=" << tqa[l] << ", tkva[l]=" <<tkva[l] << ", Condition:" << (tqa[l] >= tkva[l])<< '\n';
+                //std::cout << "l="<<l<<", tq[l]=" << tqa[l] << ", tkva[l]=" <<tkva[l] << ", Condition:" << (tqa[l] >= tkva[l])<< '\n';
 
                 if (tqa[l] >= tkva[l_kv]) {
                     vvt_dot(

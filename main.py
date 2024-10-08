@@ -37,7 +37,7 @@ def linear_scaled_dot_product(queries, keys, values, feature_map, attn_mask=None
 
 if __name__ == "__main__":
     M = 10
-    Tmax = 3
+    Tmax = 10
     Dmax = 2
     N = 1
     
@@ -51,8 +51,8 @@ if __name__ == "__main__":
     D = torch.ones(M).long() * Dmax
     T = [Tmax]*M
     names = ["m{}".format(i+1) for i in range(M)]
-    #timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
-    timelines = {k: torch.arange(t,dtype=torch.float)+10 for k,t in zip(names, T)}
+    timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
+    #timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
 
     data = {k: torch.randn(N, t, d) for k,t,d in zip(names, T, D)}
 
@@ -82,10 +82,22 @@ if __name__ == "__main__":
     print("Values:",values[0,0]@Wnew)
     print("Tq:",  t1)
     print("Tkv:", t2)
-    output = causal_dot_product(queries@Wnew, keys@Wnew, values, t1, t2)
 
-    print("Output")
-    print(output)
+    #output = causal_dot_product(queries@Wnew, keys@Wnew, values, t1, t2)
+    
+    Q = queries@Wnew
+    K = keys@Wnew
+    V = values
+    output = causal_dot_product(Q, K, V, t1, t2)
+    
+   # N, H, L = V.shape[:-1]
+    #Vdummy = torch.ones((N, H, L, 1), device=V.device)
+
+    #normalization = causal_dot_numerator_product(Q, K, Vdummy, t1, t2)
+    #output = product / (normalization+1e-6)
+
+    #print("Output")
+    #print(output)
     loss=(output).sum()**2
     loss.backward()
 
@@ -101,19 +113,25 @@ if __name__ == "__main__":
     #lin_attn(queries, keys, values, attn_mask, query_lengths, key_lengths)
 
     ## Try with a lower triangular mask, i.e. ignore irregular sampling just for testing the existing
+    Q = queries@Wref
+    K = keys@Wref
 
-    V = causal_dot_product_reference(queries@Wref, keys@Wref, values)
+    product_ref = causal_dot_product_reference(Q, K, V)
 
-    ref_output = V / (torch.einsum("nhli,nhli->nhl", queries@Wref, (keys@Wref).cumsum(2)) + 1e-6).unsqueeze(-1)
+    def norm_ref(Q,K):
+        return torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2)).unsqueeze(-1)
+    normalization_ref = norm_ref(Q,K)
+    
+    ref_output = product_ref / (normalization_ref+1e-6)
+
     # Compute the normalizers
 
-    print("Ref")
-    print(ref_output)
+    #print("Ref")
+    #print(ref_output)
     loss = (ref_output).sum()**2
     loss.backward()
 
     print("Backward")
-
     print(Wref.grad)
 
     pass

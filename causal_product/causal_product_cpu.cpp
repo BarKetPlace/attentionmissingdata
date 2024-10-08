@@ -6,7 +6,6 @@
 
 #include <torch/extension.h>
 
-#include <iostream>
 
 /**
  * Compute a*b^T and save it into out.
@@ -74,19 +73,16 @@ inline void vmt_dot(float *v, float *m, float *out, int A, int B) {
 }
 
 
-
 /**
  * Compute the causally masked dot products of queries, keys and values.
  *
  * Basically compute V_j' = (Q_{0:j} * K_{0:j}^T) * V_{0:j} for all j. The
  * computation is done efficiently by changing the order of the dot products.
  */
-void causal_dot_denominator_product(
+void causal_dot_product(
     const torch::Tensor queries,
     const torch::Tensor keys,
     const torch::Tensor values,
-    const torch::Tensor tq,
-    const torch::Tensor tkv,
     torch::Tensor product
 ) {
     // Extract some shapes
@@ -96,58 +92,37 @@ void causal_dot_denominator_product(
     int E = queries.size(3);
     int M = values.size(3);
 
-    // Numerical stability of the normalization
-    //float eps = 1e-6;
-
-    //std::cout << "My causal_dot_product!" << '\n';
-    // queries,keys and values of shape (N, h, L, d)
     // Create accessors for all the arguments
     auto qa = queries.accessor<float, 4>();
-    //auto ka = keys.accessor<float, 4>();
-    //auto va = values.accessor<float, 4>();
-    auto tqa = tq.accessor<float, 1>();
-    auto tkva = tkv.accessor<float, 1>();
+    auto ka = keys.accessor<float, 4>();
+    auto va = values.accessor<float, 4>();
     auto pa = product.accessor<float, 4>();
-
-    //auto za = product.accessor<float, 4>();
-    //auto z = torch::zeros({N, H, L, M}, queries.options());
-    //auto normalization = torch::zeros({N,H,L,M}, keys.options());
-    //auto na = normalization.accessor<float, 4>();
 
     #pragma omp parallel for collapse(2)
     for (int n=0; n<N; n++) {
         for (int h=0; h<H; h++) {
             auto kv = torch::zeros({E, M}, queries.options());
-            auto k_sum = torch::zeros({E}, keys.options());
-            float *k_sump = k_sum.data_ptr<float>();
-
-            int l_kv = 0;
-            //float *kvp = kv.data_ptr<float>();
-            
+            float *kvp = kv.data_ptr<float>();
             for (int l=0; l<L; l++) {
-                //std::cout << "l="<<l<<", tq[l]=" << tqa[l] << ", tkva[l]=" <<tkva[l] << ", Condition:" << (tqa[l] >= tkva[l])<< '\n';
-
-                if (tqa[l] >= tkva[l_kv]) {
-                    //std::cout << "l="<<l<< k_sum << '\n';
-                    k_sum += keys[n][h][l_kv];
-                    l_kv++;
-                }
-
+                vvt_dot(
+                    &ka[n][h][l][0],
+                    &va[n][h][l][0],
+                    kvp,
+                    E,
+                    M
+                );
                 vm_dot(
                     &qa[n][h][l][0],
-                    k_sump,
+                    kvp,
                     &pa[n][h][l][0],
                     E,
-                    1
+                    M
                 );
-                //std::cout << "l="<<l<< keys[n][h][l_kv] <<'\n';
-                std::cout << "l="<<l<< k_sum <<'\n';
-
-                //std::cout << "l="<<l<< product[n][h][l];
             }
         }
     }
 }
+
 
 /**
  * Compute the gradients of queries, keys and values given the gradient of the
@@ -155,12 +130,10 @@ void causal_dot_denominator_product(
  *
  * Make sure that everything is computed in O(N D^2) complexity.
  */
-void causal_dot_denominator_backward(
+void causal_dot_backward(
     const torch::Tensor queries,
     const torch::Tensor keys,
     const torch::Tensor values,
-    const torch::Tensor tq, 
-    const torch::Tensor tkv,
     const torch::Tensor grad_out,
     torch::Tensor grad_queries,
     torch::Tensor grad_keys,
@@ -170,66 +143,83 @@ void causal_dot_denominator_backward(
     int N = queries.size(0);
     int H = queries.size(1);
     int L = queries.size(2);
-    //int E = queries.size(3);
-    //int M = values.size(3);
+    int E = queries.size(3);
+    int M = values.size(3);
 
     // Create accessors for all the arguments
-    //auto qa = queries.accessor<float, 4>();
-    //auto ka = keys.accessor<float, 4>();
-    //auto va = values.accessor<float, 4>();
-    //auto ga = grad_out.accessor<float, 4>();
-    //auto gqa = grad_queries.accessor<float, 4>();
-    //auto gka = grad_keys.accessor<float, 4>();
-    //auto gva = grad_values.accessor<float, 4>();
-    auto tqa = tq.accessor<float, 1>();
-    auto tkva = tkv.accessor<float, 1>();
+    auto qa = queries.accessor<float, 4>();
+    auto ka = keys.accessor<float, 4>();
+    auto va = values.accessor<float, 4>();
+    auto ga = grad_out.accessor<float, 4>();
+    auto gqa = grad_queries.accessor<float, 4>();
+    auto gka = grad_keys.accessor<float, 4>();
+    auto gva = grad_values.accessor<float, 4>();
 
     #pragma omp parallel for collapse(2)
     for (int n=0; n<N; n++) {
         for (int h=0; h<H; h++) {
-            int l_kv=0;
-            
+            auto kv = torch::zeros({E, M}, queries.options());
+            float *kvp = kv.data_ptr<float>();
+
             // Compute the gradient wrt the queries
             for (int l=0; l<L; l++) {
-                if (tqa[l] >= tkva[l_kv]) {
-                    grad_queries[n][h][l] += keys[n][h][l_kv];
-                    l_kv++;
-                }
-                
-                if (l>0){
-                    grad_queries[n][h][l] += grad_queries[n][h][l-1];
-                }
-                
+                vvt_dot(
+                    &ka[n][h][l][0],
+                    &va[n][h][l][0],
+                    kvp,
+                    E,
+                    M
+                );
+                vmt_dot(
+                    &ga[n][h][l][0],
+                    kvp,
+                    &gqa[n][h][l][0],
+                    E,
+                    M
+                );
             }
 
-            // Compute the gradient wrt the keys
-            l_kv = L-1;
+            // Compute the gradient wrt the keys and values
+            kv.zero_();
             for (int l=L-1; l>=0; l--) {
-                if (tqa[l] <= tkva[l_kv]) {
-                    grad_keys[n][h][l] += queries[n][h][l_kv];
-                    l_kv--;
-                }
-                
-                if (l<L-1) {
-                    grad_keys[n][h][l] += grad_keys[n][h][l+1];
-                }
+                vvt_dot(
+                    &qa[n][h][l][0],
+                    &ga[n][h][l][0],
+                    kvp,
+                    E,
+                    M
+                );
+                vmt_dot(
+                    &va[n][h][l][0],
+                    kvp,
+                    &gka[n][h][l][0],
+                    E,
+                    M
+                );
+                vm_dot(
+                    &ka[n][h][l][0],
+                    kvp,
+                    &gva[n][h][l][0],
+                    E,
+                    M
+                );
             }
         }
     }
 }
 
+
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def(
-        "causal_dot_denominator_product",
-        &causal_dot_denominator_product,
+        "causal_dot_product",
+        &causal_dot_product,
         "Compute the weighted sum of values but attending only to previous "
         "values."
     );
     m.def(
-        "causal_dot_denominator_backward",
-        &causal_dot_denominator_backward,
+        "causal_dot_backward",
+        &causal_dot_backward,
         "Compute the gradient of queries, keys and values given the gradient "
         "of causal_dot_product."
     );
-
 }
