@@ -141,15 +141,6 @@ void causal_dot_denominator_product(
                     1
                 );
 
-                //vm_dot(
-                //    &qa[n][h][l][0],
-                //    k_sump,
-                //    &na[n][h][l][0],
-                //    E,
-                //    M
-                //);
-                //pa[n][h][l][0] = pa[n][h][l][0] / (na[n][h][l][0] + eps);
-
             }
         }
     }

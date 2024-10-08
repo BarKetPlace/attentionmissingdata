@@ -2,15 +2,11 @@ import torch
 import fast_transformers
 
 from fast_transformers.attention import LinearAttention, CausalLinearAttention
-#from fast_transformers.feature_maps import elu_feature_map#,ActivationFunctionFeatureMap
-
 
 from causal_product import causal_dot_product
 from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
-#relu_feature_map = ActivationFunctionFeatureMap.factory(
-#    lambda x: torch.nn.functional.relu(x)
-#)
+
 elu_feature_map = lambda x: torch.nn.functional.elu(x) + 1
 
 def linear_scaled_dot_product(queries, keys, values, feature_map, attn_mask=None, eps=1e-6):
