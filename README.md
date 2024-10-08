@@ -1,6 +1,6 @@
 # Causal attention with missing data
 
-## What I want to do
+## What I have and want to do
 The goal is to modify the cpp and cuda kernels for causal dot product proposed in https://github.com/idiap/fast-transformers, to be able to use them with non-triangular causal masks.
 
 - The source code for the library, as well as the python binding code is available in the folder `causal_product`. 
@@ -13,7 +13,7 @@ python main.py
 - The two lines related to (1) compiling `causal_product/causal_product_cpu.cpp` and (2) creating the shared `.so` library are in `causal_product/compile.sh`
 
 ### Problems
-- Problem compiling the cpp library does not work.
+- Compiling the cpp library does not work.
 
 ```bash
 cd causal_product
