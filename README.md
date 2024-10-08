@@ -1,7 +1,7 @@
 # Causal attention with missing data
 The goal is to modify the cpp and cuda kernels for causal dot product proposed in https://github.com/idiap/fast-transformers , to be able to use them with non triangular causal masks.
 
-## The existing repo
+## What I want to do
 - The dot product function is read from a local copy of the shared cpp library 
 ```bash
 python main.py
