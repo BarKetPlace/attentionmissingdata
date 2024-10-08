@@ -1,5 +1,5 @@
 #!/bin/bash
-# Compile of the causal_product shared library
+# Compile of the causal_product shared library.
 # These lines were copy pasted from the build process of the full library:
 # git clone https://github.com/idiap/fast-transformers
 # cd fast-transformers
