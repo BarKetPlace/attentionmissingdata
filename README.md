@@ -10,9 +10,14 @@ The goal is to modify the cpp and cuda kernels for causal dot product proposed i
 python main.py
 ```
 
-- I compiled the library locally and copied the two lines related to (1) compiling `causal_product_cpu.cpp` and (2) creating the shared `.so` library in `causal_product/compile.sh`
+- The two lines related to (1) compiling `causal_product/causal_product_cpu.cpp` and (2) creating the shared `.so` library are in `causal_product/compile.sh`
+
+### Problems
+- Problem compiling the cpp library does not work.
+
 ```bash
+cd causal_product
 ./compile.sh
 ```
 
-- Problem the compiling does not work.
+- I don't know where to start with the cuda kernel (source code in `causal_product/causal_product_cuda.cu`)
