@@ -21,6 +21,8 @@ except ImportError:
     causal_dot_product_cuda = causal_dot_backward_cuda = None
 
 
+from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
+
 
 def causal_dot_product(Q, K, V, tq, tkv):
     product = causal_dot_numerator_product(Q, K, V, tq, tkv)
@@ -38,7 +40,6 @@ class CausalDotProductNumerator(torch.autograd.Function):
         "cpu": causal_dot_numerator_backward_cpu,
         "cuda": causal_dot_backward_cuda
     }
-
 
     @staticmethod
     def forward(ctx, Q, K, V, tq, tkv):
@@ -60,7 +61,7 @@ class CausalDotProductNumerator(torch.autograd.Function):
             tkv,
             product
         )
-        
+        product_ref = causal_dot_product_reference(Q, K, V)
         return product
 
     @staticmethod
@@ -112,7 +113,7 @@ class CausalDotProductDenominator(torch.autograd.Function):
         N, H, L, _ = Q.shape
         _, _, _, M = V.shape
         normalization = torch.zeros((N, H, L,1), device=device)
-
+        
         # Actually perform the denominator of dot product
         CausalDotProductDenominator.dot_denominator[device.type](
             Q.data,
@@ -122,6 +123,14 @@ class CausalDotProductDenominator(torch.autograd.Function):
             tkv,
             normalization
         )
+
+        normalization_ref = (torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2))).unsqueeze(-1)
+        #print("---------------")
+        #print("Normalization")
+        #print(normalization)
+        #print("Ref")
+        #print(normalization_ref)
+        #print("---------------")
         return normalization
 
     @staticmethod

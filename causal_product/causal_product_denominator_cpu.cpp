@@ -118,7 +118,7 @@ void causal_dot_denominator_product(
     for (int n=0; n<N; n++) {
         for (int h=0; h<H; h++) {
             auto kv = torch::zeros({E, M}, queries.options());
-            auto k_sum = torch::zeros({M}, keys.options());
+            auto k_sum = torch::zeros({E}, keys.options());
             float *k_sump = k_sum.data_ptr<float>();
 
             int l_kv = 0;
@@ -140,7 +140,10 @@ void causal_dot_denominator_product(
                     E,
                     1
                 );
+                //std::cout << "l="<<l<< keys[n][h][l_kv] <<'\n';
+                std::cout << "l="<<l<< k_sum <<'\n';
 
+                //std::cout << "l="<<l<< product[n][h][l];
             }
         }
     }

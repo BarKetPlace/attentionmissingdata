@@ -4,10 +4,10 @@ import fast_transformers
 from fast_transformers.attention import LinearAttention, CausalLinearAttention
 
 from causal_product import causal_dot_product
-from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
 
 elu_feature_map = lambda x: torch.nn.functional.elu(x) + 1
+from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
 def linear_scaled_dot_product(queries, keys, values, feature_map, attn_mask=None, eps=1e-6):
     _,Tq,num_heads,d = queries.shape
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     data = {k: torch.randn(N, t, d) for k,t,d in zip(names, T, D)}
 
     x1 = data["m1"]
-    t1 = timelines["m1"].reshape(-1)-1
+    t1 = timelines["m1"].reshape(-1)
 
     x2 = data["m2"]
     t2 = timelines["m2"].reshape(-1)
@@ -77,13 +77,13 @@ if __name__ == "__main__":
     # queries,keys and values of shape (N, h, T, d)
     print("\n".join([str(d.shape) for d in [queries@Wnew, keys@Wnew, values, t1, t2]]))
 
-    print("Queries:",queries[0,0])
-    print("Keys:",keys[0,0])
-    print("Values:",values[0,0])
+    print("Queries:",queries[0,0]@Wnew)
+    print("Keys:",keys[0,0]@Wnew)
+    print("Values:",values[0,0]@Wnew)
     print("Tq:",  t1)
     print("Tkv:", t2)
     output = causal_dot_product(queries@Wnew, keys@Wnew, values, t1, t2)
-    
+
     print("Output")
     print(output)
     loss=(output).sum()**2
@@ -102,7 +102,11 @@ if __name__ == "__main__":
 
     ## Try with a lower triangular mask, i.e. ignore irregular sampling just for testing the existing
 
-    ref_output = causal_dot_product_reference(queries@Wref, keys@Wref, values)
+    V = causal_dot_product_reference(queries@Wref, keys@Wref, values)
+
+    ref_output = V / (torch.einsum("nhli,nhli->nhl", queries@Wref, (keys@Wref).cumsum(2)) + 1e-6).unsqueeze(-1)
+    # Compute the normalizers
+
     print("Ref")
     print(ref_output)
     loss = (ref_output).sum()**2
