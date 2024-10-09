@@ -134,7 +134,7 @@ def linear_scaled_dot_product(queries, keys, values, feature_map, attn_mask=None
 if __name__ == "__main__":
     M = 10
     Tmax = 10
-    Dmax = 2
+    Dmax = 1
     N = 1
     d_out = 2
     torch.manual_seed(0)

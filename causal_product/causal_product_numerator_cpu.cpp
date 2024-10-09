@@ -128,7 +128,7 @@ void causal_dot_numerator_product(
             for (int l=0; l<L; l++) {
                 //std::cout << "l="<<l<<", tq[l]=" << tqa[l] << ", tkva[l]=" <<tkva[l] << ", Condition:" << (tqa[l] >= tkva[l])<< '\n';
 
-                if (tqa[l] >= tkva[l_kv]) {
+                while ((tqa[l] >= tkva[l_kv]) && (l_kv<L)) {
                     vvt_dot(
                         &ka[n][h][l_kv][0],
                         &va[n][h][l_kv][0],
@@ -147,15 +147,6 @@ void causal_dot_numerator_product(
                     E,
                     M
                 );
-
-                //vm_dot(
-                //    &qa[n][h][l][0],
-                //    k_sump,
-                //    &na[n][h][l][0],
-                //    E,
-                //    M
-                //);
-                //pa[n][h][l][0] = pa[n][h][l][0] / (na[n][h][l][0] + eps);
 
             }
         }
@@ -206,7 +197,7 @@ void causal_dot_numerator_backward(
             
             // Compute the gradient wrt the queries
             for (int l=0; l<L; l++) {
-                if (tqa[l] >= tkva[l_kv]) {
+                while ((tqa[l] >= tkva[l_kv]) && (l_kv<L)) {
                     vvt_dot(
                         &ka[n][h][l][0],
                         &va[n][h][l][0],
@@ -230,7 +221,7 @@ void causal_dot_numerator_backward(
             kv.zero_();
             l_kv = L-1;
             for (int l=L-1; l>=0; l--) {
-                if (tqa[l] <= tkva[l_kv]) {
+                while ((tqa[l] <= tkva[l_kv]) && (l_kv>=0)) {
                     vvt_dot(
                         &qa[n][h][l][0],
                         &ga[n][h][l][0],
