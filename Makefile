@@ -1,5 +1,5 @@
 
-dir=causal_product
+dir=src/causal_product
 CLFLAGS=-shared -Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-Bsymbolic-functions -g -fwrapv -O2 -Wl,-Bsymbolic-functions -g -fwrapv -O2 -g -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2
 LFLAGS=-L/home/anthon@ad.cmm.se/projects/dataintegration/pyenv/lib/python3.10/site-packages/torch/lib -lc10 -ltorch -ltorch_cpu -ltorch_python 
 CFLAGS=-Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -g -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time -D_FORTIFY_SOURCE=2 -fPIC
