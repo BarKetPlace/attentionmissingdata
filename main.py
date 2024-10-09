@@ -132,9 +132,9 @@ def linear_scaled_dot_product(queries, keys, values, feature_map, attn_mask=None
     return V
 
 if __name__ == "__main__":
-    M = 10
+    M = 3
     Tmax = 10
-    Dmax = 1
+    Dmax = 2
     N = 1
     d_out = 2
     torch.manual_seed(0)
@@ -151,12 +151,20 @@ if __name__ == "__main__":
 
     #data = {k: torch.randn(N, t, d) for k,t,d in zip(names, T, D)}
 
-    #timelines = {k: torch.sort(torch.randn(t).abs(), descending=False).values*100 for k,t in zip(names, T)}
-    timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
+    timelines = {k: torch.sort(torch.randn(t).abs(), descending=False).values*100 for k,t in zip(names, T)}
+    #timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
     
-    data = {k: torch.randn(t, d) for k,t,d in zip(names, T, D)}
-    
-    y = torch.randn(T[0], d_out)
+    data = {k: torch.randn(t, d)+i for i,(k,t,d) in enumerate(zip(names, T, D))}
+    y = torch.zeros(Tmax, d_out)
+
+    time_ref = timelines["m1"]
+    for itime,t in enumerate(time_ref):
+        x_max_previous = 0.
+        for k in data.keys():
+            previous_data = data[k][timelines[k] <= t]
+            if previous_data.shape[0]>0:
+                x_max_previous += data[k][timelines[k] <= t].max(0).values
+        y[itime,:] = x_max_previous
 
     def prep_data(data,timelines):
         # Compute timeseries deltas
@@ -212,8 +220,26 @@ if __name__ == "__main__":
     x1 = data["m1"]
     t1 = timelines["m1"]
     L = []
+
+    def plot_data(data, timelines, target, prediction=None, dim=0):
+        fig, ax = plt.subplots()
+        for i,k in enumerate(data.keys()):
+            X = data[k][:,dim]
+            timel = timelines[k]
+            ax.plot(timel,X,"-",label=k,marker='o')
+        ax.plot(timelines["m1"],target[:,dim],linewidth=2,marker="o",color="black",label="Target")
+        if not (prediction is None):
+            ax.plot(timelines["m1"],prediction[:,dim],linewidth=2,marker="o",color="darkred",label="Prediction")
+
+        ax.legend()
+
+        return fig, ax
+
+    #fig, ax = plot_data(data,timelines,y)
+    
     X = prep_data(data, timelines)
-    num_epochs = 1000
+
+    num_epochs = 3000
     for epoch in range(num_epochs):
         yhat = model(X)
 
@@ -225,4 +251,6 @@ if __name__ == "__main__":
     
     fig, ax = plt.subplots()
     ax.plot(L)
+
+    fig, ax = plot_data(data, timelines, y, prediction=yhat.detach()[0], dim=0)
     plt.show()
