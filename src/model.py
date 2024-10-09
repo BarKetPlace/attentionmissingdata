@@ -11,9 +11,9 @@ class CAMD(torch.nn.Module):
         self.d_out = d_out
         self.d_qk = d_qk
         
-        self.W_Q = MLP(d_qk + 2, [d_qk]*n_layers,d_qk,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) ##torch.nn.Linear(d_qk + 2, d_qk)
-        self.W_K = MLP(d_qk + 2, [d_qk]*n_layers,d_qk,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) ##torch.nn.Linear(d_qk + 2, d_qk)
-        self.W_V = MLP(d_v + 2, [d_v]*n_layers,d_v,activation,   layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature)    ##torch.nn.Linear(d_v + 2, d_v)
+        self.W_Q = MLP(d_qk + 2, [d_qk+ 2]*n_layers,d_qk+ 2,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) ##torch.nn.Linear(d_qk + 2, d_qk)
+        self.W_K = MLP(d_qk + 2, [d_qk+ 2]*n_layers,d_qk+ 2,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) ##torch.nn.Linear(d_qk + 2, d_qk)
+        #self.W_V = MLP(d_v + 2, [d_v]*n_layers,d_v,activation,   layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature)    ##torch.nn.Linear(d_v + 2, d_v)
         
         self.W_out = torch.nn.Linear(M*d_v, d_out)
 
@@ -28,7 +28,7 @@ class CAMD(torch.nn.Module):
         
         for k, X in calX.items():
             K = self.W_K(X)
-            V = self.W_V(X)
+            V = X
 
             t2 = X[0,0,:,-1]
             
@@ -38,8 +38,8 @@ class CAMD(torch.nn.Module):
         Zout = torch.cat(list(Z_m.values()), dim=1)
         
         # Flatten all the heads
-        Zout = Zout.transpose(1,2).flatten(start_dim=2,end_dim=3)
+        #Zout = Zout.transpose(1,2).flatten(start_dim=2,end_dim=3)
 
-        # 
-        yhat = self.W_out(Zout)
+        yhat = Zout.sum(1)[...,:2]
+        #yhat = self.W_out(Zout)
         return yhat

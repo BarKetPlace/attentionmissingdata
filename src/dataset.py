@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import torch
 
+import numpy as np
+
 def compute_target(data,timelines,d_out):
     Tmax=data["m1"].shape[1]
     N =data["m1"].shape[0]
@@ -16,8 +18,22 @@ def compute_target(data,timelines,d_out):
                 x_max_previous += data[k][:,timelines[k] <= t].max(1).values
         y[:,itime, :] = x_max_previous
     return y
-import numpy as np
-def plot_data(data, timelines, target, prediction=None, dim=0, n=0,figsize=None,masks=False):
+
+
+def compute_target2(data,timelines,d_out):
+    Tmax = data["m1"].shape[1]
+    N = data["m1"].shape[0]
+
+    y = torch.zeros(N, Tmax, d_out)
+    time_ref = timelines["m1"]
+
+    for k in data.keys():
+        ikeep = torch.tensor([0])#torch.randint(timelines[k].shape[0],(1,))
+        y += data[k][:, [ikeep[0]], :]
+
+    return y
+
+def plot_data(data, timelines, target, prediction=None, dim=0, n=0,figsize=None,masks=False,ax=None):
     images=[]
     if masks:
         for k, tl in timelines.items():
@@ -44,19 +60,24 @@ def plot_data(data, timelines, target, prediction=None, dim=0, n=0,figsize=None,
             #ax.set_xticklabels(tl)  # Set the corresponding t1 labels on the x-axis
             #ax.set_xticks(tl)
             images.append([fig,ax])
-    
-    fig, ax = plt.subplots(figsize=figsize)
+    return_plot=None
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+        return_plot=[fig,ax]
     for i,k in enumerate(data.keys()):
         X = data[k][n,:,dim]
         timel = timelines[k]
         ax.plot(timel, X, "-", label=k, marker='o')
     ax.plot(timelines["m1"],target[:,dim],linewidth=2,marker="o",color="black",label="Target")
+
+    ax.plot(timelines["m1"],sum(list(data.values()))[n,:,dim],linewidth=2,marker="o",color="gray",label="Sum data")
+
     if not (prediction is None):
         ax.plot(timelines["m1"],prediction[:,dim],linewidth=2,marker="o",color="darkred",label="Prediction")
 
     ax.legend()
 
-    return fig, ax,  images
+    return return_plot,  images
 
 
 def prep_data(data,timelines):

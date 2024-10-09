@@ -21,9 +21,13 @@ class MLP(torch.nn.Module):
             layer_out_size = layers_sizes[i] if i < (len(layers_sizes)) else output_size
 
             self.linear_layers.append(torch.nn.Linear(layer_in_size, layer_out_size))
+            #torch.nn.init.constant_(self.linear_layers[-1].weight,0.)
+
             if self.skipconnections:
                 if layer_in_size == layer_out_size:
                     self.linear_layers_skip.append(torch.nn.Linear(layer_in_size, layer_out_size))
+                    #torch.nn.init.constant_(self.linear_layers_skip[-1].weight,0.)
+
                 else:
                     self.linear_layers_skip.append(None)
                 
@@ -35,7 +39,7 @@ class MLP(torch.nn.Module):
         if self.skipconnections:
             self.linear_layers_skip = torch.nn.ModuleList(self.linear_layers_skip)
     
-    @torch.compile(mode="default")
+    #@torch.compile(mode="default")
     def forward(self, x):
         """An MLP with skipconnections, layer normalizations, and dropout
             
@@ -94,32 +98,3 @@ class MLP(torch.nn.Module):
         return x
 
 
-
-def create_nn_sequential_MLP(input_size, layers_sizes, output_size, activation, dropout_p=0):
-    # Sequence of dropout -> linear -> activation
-    ## Remove the first dropout, and last activation
-    ## Make sure that the first linear has input dimension> input_size
-    ## Make sure that the last linear has output dimension> output_size
-    #self.input_size, self.layers_sizes, self.output_size, self.activation = input_size, layers_sizes, output_size, activation
-    #self.dropout_p = dropout_p
-    #self.activation_function = activation()
-
-    #self.dropout_function = torch.nn.Dropout(dropout_p)
-    
-    #self.linear_layers = []
-    #for i in range(len(layers_sizes)+1):
-    #    layer_in_size = input_size if i==0 else layers_sizes[i-1]
-    #    layer_out_size = layers_sizes[i] if i < (len(layers_sizes)) else output_size
-
-    #self.linear_layers.append(torch.nn.Linear(layer_in_size, layer_out_size))
-        
-    #out = torch.nn.Sequential(*sum([[torch.nn.Dropout(dropout_p),
-    #                                            torch.nn.Linear(input_size if i==0 else layers_sizes[i-1],
-    #                                            layers_sizes[i] if i < (len(layers_sizes)) else output_size
-    #                                            ),
-    #                                            activation(), 
-    #                                            torch.nn.LayerNorm()
-    #                                            ]
-    #                                        for i in range(len(layers_sizes)+1)],[])[1:-1])
-    #return out
-    pass
