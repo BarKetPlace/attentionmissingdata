@@ -1,5 +1,9 @@
 import torch
 import fast_transformers
+import matplotlib
+matplotlib.use("tkagg")
+import matplotlib.pyplot as plt
+
 
 from fast_transformers.attention import LinearAttention, CausalLinearAttention
 
@@ -9,59 +13,24 @@ from causal_product import causal_dot_product
 elu_feature_map = lambda x: torch.nn.functional.elu(x) + 1
 from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
-def linear_scaled_dot_product(queries, keys, values, feature_map, attn_mask=None, eps=1e-6):
-    _,Tq,num_heads,d = queries.shape
-    _,Tk,num_heads,d = keys.shape
-    
-    t1,t2 = attn_mask
-    Y = torch.zeros_like(queries)
-    Q = feature_map(queries)##.view(*queries.shape[:2],self.num_heads,self.key_dim)#[:,:,None,:]
-    K = feature_map(keys)#.view(*keys.shape[:2],self.num_heads,self.key_dim) #[:,:,None,:]
-    values = values#.view(*values.shape[:2],self.num_heads,self.out_dim)
+def test(D,T,names,Dmax):
 
-    #for i in Tq:
-        
-    # Compute the KV matrix, namely the dot product of keys and values so
-    # that we never explicitly compute the attention matrix and thus
-    # decrease the complexity
-    KV = torch.einsum("nthd,nthm->nhmd", K, values)
-
-    # Compute the normalizer
-    #Zi = 
-    Z = 1/(torch.einsum("nthd,nhd->nth", Q, K.sum(dim=1))+eps)
-
-    # Finally compute and return the new values
-    V = torch.einsum("nthd,nhmd,nth->nthm", Q, KV, Z)
-    V = V.flatten(start_dim=2,end_dim=3)
-    return V
-
-if __name__ == "__main__":
-    M = 10
-    Tmax = 10
-    Dmax = 2
-    N = 1
-    
-    torch.manual_seed(0)
-    Wref = torch.randn((Dmax, Dmax))
-    Wnew = Wref.clone()#
-    Wnew.requires_grad_(True)
-    Wref.requires_grad_(True)
-
-    # Create signals from M modalities, all with the same dimension and length, with irregular sampling
-    D = torch.ones(M).long() * Dmax
-    T = [Tmax]*M
-    names = ["m{}".format(i+1) for i in range(M)]
     timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
     #timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
 
     data = {k: torch.randn(N, t, d) for k,t,d in zip(names, T, D)}
 
     x1 = data["m1"]
-    t1 = timelines["m1"].reshape(-1)
+    t1 = timelines["m1"].reshape(-1)-1
 
     x2 = data["m2"]
     t2 = timelines["m2"].reshape(-1)
     
+    Wref = torch.randn((Dmax, Dmax))
+    Wnew = Wref.clone()#
+    Wnew.requires_grad_(True)
+    Wref.requires_grad_(True)
+
     query = x1
     # Number of heads=1, 
     queries = query.unsqueeze(1)
@@ -77,12 +46,12 @@ if __name__ == "__main__":
     # queries,keys and values of shape (N, h, T, d)
     print("\n".join([str(d.shape) for d in [queries@Wnew, keys@Wnew, values, t1, t2]]))
 
-    print("Queries:",queries[0,0]@Wnew)
-    print("Keys:",keys[0,0]@Wnew)
-    print("Values:",values[0,0]@Wnew)
+    #print("Queries:",queries[0,0]@Wnew)
+    #print("Keys:",keys[0,0]@Wnew)
+    #print("Values:",values[0,0]@Wnew)
     print("Tq:",  t1)
     print("Tkv:", t2)
-
+    print(t1.reshape(-1,1)>=t2.reshape(1,-1))
     #output = causal_dot_product(queries@Wnew, keys@Wnew, values, t1, t2)
     
     Q = queries@Wnew
@@ -135,3 +104,125 @@ if __name__ == "__main__":
     print(Wref.grad)
 
     pass
+
+def linear_scaled_dot_product(queries, keys, values, feature_map, attn_mask=None, eps=1e-6):
+    _,Tq,num_heads,d = queries.shape
+    _,Tk,num_heads,d = keys.shape
+    
+    t1,t2 = attn_mask
+    Y = torch.zeros_like(queries)
+    Q = feature_map(queries)##.view(*queries.shape[:2],self.num_heads,self.key_dim)#[:,:,None,:]
+    K = feature_map(keys)#.view(*keys.shape[:2],self.num_heads,self.key_dim) #[:,:,None,:]
+    values = values#.view(*values.shape[:2],self.num_heads,self.out_dim)
+
+    #for i in Tq:
+        
+    # Compute the KV matrix, namely the dot product of keys and values so
+    # that we never explicitly compute the attention matrix and thus
+    # decrease the complexity
+    KV = torch.einsum("nthd,nthm->nhmd", K, values)
+
+    # Compute the normalizer
+    #Zi = 
+    Z = 1/(torch.einsum("nthd,nhd->nth", Q, K.sum(dim=1))+eps)
+
+    # Finally compute and return the new values
+    V = torch.einsum("nthd,nhmd,nth->nthm", Q, KV, Z)
+    V = V.flatten(start_dim=2,end_dim=3)
+    return V
+
+if __name__ == "__main__":
+    M = 10
+    Tmax = 10
+    Dmax = 2
+    N = 1
+    d_out = 2
+    torch.manual_seed(0)
+
+    # Create signals from M modalities, all with the same dimension and length, with irregular sampling
+    D = torch.ones(M).long() * Dmax
+    T = [Tmax]*M
+    names = ["m{}".format(i+1) for i in range(M)]
+
+    #test(D,T,names,Dmax)
+
+    #timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
+    #timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
+
+    #data = {k: torch.randn(N, t, d) for k,t,d in zip(names, T, D)}
+
+    #timelines = {k: torch.sort(torch.randn(t).abs(), descending=False).values*100 for k,t in zip(names, T)}
+    timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
+    
+    data = {k: torch.randn(t, d) for k,t,d in zip(names, T, D)}
+    
+    y = torch.randn(T[0], d_out)
+
+    def prep_data(data,timelines):
+        # Compute timeseries deltas
+        deltas = {k: torch.diff(t, prepend=torch.tensor([t[0]])).view(t.shape[0],1) for k,t in timelines.items()}
+
+        # Concatenate data and timelines
+        calX = {k: torch.cat([data[k], deltas[k], timelines[k].view(-1,1)], dim=1).unsqueeze(0).unsqueeze(0) for k in data.keys()}
+        return calX
+
+    class CAMD(torch.nn.Module):
+        def __init__(self, M, d_v, d_qk, d_out):
+            super(CAMD,self).__init__()
+            self.M = M
+            self.d_v = d_v
+            self.d_out = d_out
+            self.d_qk = d_qk
+
+            self.W_Q = torch.nn.Linear(d_qk + 2, d_qk)
+            self.W_K = torch.nn.Linear(d_qk + 2, d_qk)
+            self.W_V = torch.nn.Linear(d_v + 2, d_v)
+            self.W_out = torch.nn.Linear(M*d_v, d_out)
+
+        def forward(self, calX):
+            """
+            calX is a dictionnary : {"m1":  shape (1,1,T_1,d_1), "m2":  shape (1,1,T_2,d_2), ...}
+            """
+            Z_m = {}
+            Q = self.W_Q(calX["m1"])
+
+            t1 = calX["m1"][0,0,:,-1]
+            
+            for k, X in calX.items():
+                K = self.W_K(X)
+                V = self.W_V(X)
+
+                t2 = X[0,0,:,-1]
+                
+                Z_m[k] = causal_dot_product(Q, K, V, t1, t2)
+            
+            # Concatenate on the head dimension
+            Zout = torch.cat(list(Z_m.values()), dim=1)
+            
+            # Flatten all the heads
+            Zout = Zout.transpose(1,2).flatten(start_dim=2,end_dim=3)
+
+            # 
+            yhat = self.W_out(Zout)
+            return yhat
+    
+    model =  CAMD(M, Dmax, Dmax, Dmax)
+    optimizer = torch.optim.Adam(model.parameters(),lr=1e-4)
+
+    x1 = data["m1"]
+    t1 = timelines["m1"]
+    L = []
+    X = prep_data(data, timelines)
+    num_epochs = 1000
+    for epoch in range(num_epochs):
+        yhat = model(X)
+
+        loss = torch.nn.functional.mse_loss(yhat[0], y)
+        loss.backward()
+        optimizer.step()
+        L.append(loss.item())
+        print(epoch, L[-1])
+    
+    fig, ax = plt.subplots()
+    ax.plot(L)
+    plt.show()
