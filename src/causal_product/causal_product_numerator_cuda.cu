@@ -1470,13 +1470,13 @@ void causal_dot_backward(const torch::Tensor queries,
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def(
-        "causal_dot_product",
+        "causal_dot_numerator_product",
         &causal_dot_product,
         "Compute the weighted sum of values but attending only to previous "
         "values."
     );
     m.def(
-        "causal_dot_backward",
+        "causal_dot_numerator_backward",
         &causal_dot_backward,
         "Compute the gradients for the causal dot product."
     );
