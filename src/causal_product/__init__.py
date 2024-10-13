@@ -14,14 +14,14 @@ from .causal_product_numerator_cpu import causal_dot_numerator_product as causal
 
 
 try:
-    from .causal_product_cuda import \
-        causal_dot_product as causal_dot_product_cuda, \
-        causal_dot_backward as causal_dot_backward_cuda
+    from .causal_product_numerator_cuda import \
+        causal_dot_numerator_product as causal_dot_numerator_product_cuda, \
+        causal_dot_numerator_backward as causal_dot_numerator_backward_cuda
 except ImportError:
-    causal_dot_product_cuda = causal_dot_backward_cuda = None
+    causal_dot_numerator_product_cuda = causal_dot_numerator_backward_cuda = None
 
 
-from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
+#from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
 
 def causal_dot_product(Q, K, V, tq, tkv):

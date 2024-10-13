@@ -9,11 +9,11 @@ from fast_transformers.attention import LinearAttention, CausalLinearAttention
 from src.causal_product import causal_dot_product
 
 elu_feature_map = lambda x: torch.nn.functional.elu(x) + 1
-from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
+
 
 from src.dataset import compute_target, prep_data, plot_data,compute_target2
 from src.model import CAMD
-from test import test
+#from test import test
 
 if __name__ == "__main__":
     M = 3

@@ -1,13 +1,11 @@
 Bootstrap: docker
-From: debian:12
+From: ubuntu:24.04
 
 %post
-    apt-get update 
-    apt install -y wget
-    sh /opt/cuda_12.6.2_560.35.03_linux.run
+    apt update
+    apt install -y python3-virtualenv 
     virtualenv -p python3 /opt/pyenv
     /opt/pyenv/bin/pip install --no-cache-dir -r /opt/requirements.txt
     
 %files
     ../requirements.txt /opt/requirements.txt
-    cuda_12.6.2_560.35.03_linux.run /opt/cuda_12.6.2_560.35.03_linux.run
