@@ -1,10 +1,10 @@
 import torch
-import fast_transformers
+#import fast_transformers
 import matplotlib
 matplotlib.use("tkagg")
 import matplotlib.pyplot as plt
 
-from fast_transformers.attention import LinearAttention, CausalLinearAttention
+#from fast_transformers.attention import LinearAttention, CausalLinearAttention
 
 from src.causal_product import causal_dot_product
 
