@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     L = []
 
-    X = prep_data(data, timelines,device=device)
+    X = prep_data(data, timelines, device=device)
     
     num_epochs = 1000
     every_e = num_epochs // 20

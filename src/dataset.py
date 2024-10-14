@@ -6,7 +6,7 @@ import numpy as np
 def compute_target(data,timelines,d_out):
     Tmax=data["m1"].shape[1]
     N =data["m1"].shape[0]
-
+        
     y = torch.zeros(N, Tmax, d_out)
 
     time_ref = timelines["m1"]
@@ -16,7 +16,7 @@ def compute_target(data,timelines,d_out):
             previous_data = data[k][:,timelines[k] <= t]
             if previous_data.shape[1]>0:
                 x_max_previous += data[k][:,timelines[k] <= t].max(1).values
-        y[:,itime, :] = x_max_previous
+        y[:, itime, :] = x_max_previous
     return y
 
 

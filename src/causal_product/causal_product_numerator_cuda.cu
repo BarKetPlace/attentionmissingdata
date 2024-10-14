@@ -1198,6 +1198,7 @@ int lmha_bwd(const torch::Tensor queries,
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 typedef torch::PackedTensorAccessor32<float, 4, torch::RestrictPtrTraits> float_accessor;
+typedef torch::PackedTensorAccessor32<float, 1, torch::RestrictPtrTraits> float_accessor1;
 
 #define E_BLOCK_SIZE 8
 
@@ -1205,6 +1206,8 @@ __global__ void causal_dot_product_kernel(
     const float_accessor queries,
     const float_accessor keys,
     const float_accessor values,
+    const float_accessor1 tq,
+    const float_accessor1 tkv,
     float_accessor result,
     const int N,
     const int H,
@@ -1243,6 +1246,8 @@ __global__ void causal_dot_product_kernel(
 void causal_dot_product_(const torch::Tensor queries,
                          const torch::Tensor keys,
                          const torch::Tensor values,
+                         const torch::Tensor tq,
+                         const torch::Tensor tkv,
                          torch::Tensor product) {
     // Make sure that we are using the correct GPU device
     torch::DeviceGuard _guard(queries.device());
@@ -1263,6 +1268,8 @@ void causal_dot_product_(const torch::Tensor queries,
       queries.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       keys.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       values.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
+      tq.packed_accessor32<float, 1, torch::RestrictPtrTraits>(),
+      tkv.packed_accessor32<float, 1, torch::RestrictPtrTraits>(),
       product.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       N, H, L, E, M
     );
@@ -1273,15 +1280,18 @@ void causal_dot_product_(const torch::Tensor queries,
 void causal_dot_product(const torch::Tensor queries,
                         const torch::Tensor keys,
                         const torch::Tensor values,
+                        const torch::Tensor tq,
+                        const torch::Tensor tkv,
                         torch::Tensor product) {
-#ifdef ENABLE_NVIDIA_OPTIMIZATIONS
-  int fallback = nvidia::lmha_fwd(queries, keys, values, product);
-#else
-  int fallback = 1;
-#endif
-  if( fallback ) {
-    causal_dot_product_(queries, keys, values, product);
-  }
+
+//#ifdef ENABLE_NVIDIA_OPTIMIZATIONS
+//  int fallback = nvidia::lmha_fwd(queries, keys, values, product);
+//#else
+//  int fallback = 1;
+//#endif
+//  if( fallback ) {
+    causal_dot_product_(queries, keys, values, tq, tkv, product);
+//  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1297,6 +1307,8 @@ __global__ void causal_dot_backward_query_key_kernel(
     const float_accessor queries,
     const float_accessor keys,
     const float_accessor values,
+    const float_accessor1 tq,
+    const float_accessor1 tkv,
     const float_accessor grad_out,
     float_accessor grad_queries,
     float_accessor grad_keys,
@@ -1347,6 +1359,8 @@ __global__ void causal_dot_backward_value_kernel(
     const float_accessor queries,
     const float_accessor keys,
     const float_accessor values,
+    const float_accessor1 tq,
+    const float_accessor1 tkv,
     const float_accessor grad_out,
     float_accessor grad_keys,
     float_accessor grad_values,
@@ -1387,6 +1401,8 @@ __global__ void causal_dot_backward_value_kernel(
 void causal_dot_backward_(const torch::Tensor queries,
                           const torch::Tensor keys,
                           const torch::Tensor values,
+                          const torch::Tensor tq,
+                          const torch::Tensor tkv,
                           const torch::Tensor grad_out,
                           torch::Tensor grad_queries,
                           torch::Tensor grad_keys,
@@ -1411,6 +1427,8 @@ void causal_dot_backward_(const torch::Tensor queries,
       queries.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       keys.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       values.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
+      tq.packed_accessor32<float, 1, torch::RestrictPtrTraits>(),
+      tkv.packed_accessor32<float, 1, torch::RestrictPtrTraits>(),
       grad_out.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       grad_queries.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       grad_keys.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
@@ -1426,6 +1444,8 @@ void causal_dot_backward_(const torch::Tensor queries,
       queries.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       keys.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       values.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
+      tq.packed_accessor32<float, 1, torch::RestrictPtrTraits>(),
+      tkv.packed_accessor32<float, 1, torch::RestrictPtrTraits>(),
       grad_out.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       grad_keys.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
       grad_values.packed_accessor32<float, 4, torch::RestrictPtrTraits>(),
@@ -1438,22 +1458,25 @@ void causal_dot_backward_(const torch::Tensor queries,
 void causal_dot_backward(const torch::Tensor queries,
                          const torch::Tensor keys,
                          const torch::Tensor values,
+                         const torch::Tensor tq,
+                         const torch::Tensor tkv,
                          const torch::Tensor grad_out,
                          torch::Tensor grad_queries,
                          torch::Tensor grad_keys,
                          torch::Tensor grad_values) {
-#ifdef ENABLE_NVIDIA_OPTIMIZATIONS
-  int fallback = nvidia::lmha_bwd(queries,
-                                  keys,
-                                  values,
-                                  grad_out,
-                                  grad_queries,
-                                  grad_keys,
-                                  grad_values);
-#else
-  int fallback = 1;
-#endif
-  if( fallback ) {
+
+//#ifdef ENABLE_NVIDIA_OPTIMIZATIONS
+//  int fallback = nvidia::lmha_bwd(queries,
+//                                  keys,
+//                                  values,
+//                                  grad_out,
+//                                  grad_queries,
+//                                  grad_keys,
+//                                  grad_values);
+//#else
+//  int fallback = 1;
+//#endif
+//  if( fallback ) {
     // Make sure that the gradient tensors are 0. This is needed because the
     // bwd pass might have partially executed and filled in some values in
     // grad_queries or grad_keys.
@@ -1462,8 +1485,8 @@ void causal_dot_backward(const torch::Tensor queries,
     // kernel for the backward pass.
     grad_queries.zero_();
     grad_keys.zero_();
-    causal_dot_backward_(queries, keys, values, grad_out, grad_queries, grad_keys, grad_values);
-  }
+    causal_dot_backward_(queries, keys, values, tq, tkv, grad_out, grad_queries, grad_keys, grad_values);
+//  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

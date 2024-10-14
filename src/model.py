@@ -35,35 +35,28 @@ class CAMD(torch.nn.Module):
 
         Zout = torch.zeros((1, M, t1.shape[0], self.d_qk+ 2), device=Q.device).share_memory_()
         
-        all_functions = [partial(forward_modality, m=m,W_k=self.W_K[m], t1=t1, Q=Q) for m in range(len(self.W_K))]
+        
+        the_func=partial(forward_modality, t1=t1, Q=Q) #for m in range(len(self.W_K))]
         outputs = []
-        
+        Z_m = []
         processes = []
-        for func, X in zip(all_functions, calX.values()):
-            p = mp.Process(target=func, args=(X, Zout))
-            p.start()
-            processes.append(p)
+        #pool = mp.Pool(processes=len(self.W_K))
+        results = list(map(the_func, zip(calX.values(), [self.W_K[0]]*M)))
         
-        for p in processes:
-            p.join()
-
         # Concatenate on the head dimension
-        #Zout = torch.cat(Z_m, dim=1)
-        
+        Zout = torch.cat(results, dim=1)
+
         # Flatten all the heads
         #Zout = Zout.transpose(1,2).flatten(start_dim=2,end_dim=3)
 
         yhat = Zout.sum(1)[...,:2]
-        #yhat = self.W_out(Zout)
+        ###yhat = self.W_out(Zout)
         return yhat
 
-def forward_modality(X, output, m=None,W_k=None, t1=None, Q=None):
+#@torch.compile()
+def forward_modality(args, t1=None, Q=None):
+    X, W_k=args
     K = W_k(X)
     V = X
     t2 = X[0,0,:,-1]
-    #the_queue.put((m,causal_dot_product(Q, K, V, t1, t2)))
-    if not (output is None):
-        output[:,m,...] = causal_dot_product(Q, K, V, t1, t2)
-        return None
-    else:
-        return causal_dot_product(Q, K, V, t1, t2)
+    return causal_dot_product(Q, K, V, t1, t2)
