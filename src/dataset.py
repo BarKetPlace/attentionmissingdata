@@ -80,10 +80,10 @@ def plot_data(data, timelines, target, prediction=None, dim=0, n=0,figsize=None,
     return return_plot,  images
 
 
-def prep_data(data,timelines):
+def prep_data(data,timelines,device="cpu"):
     # Compute timeseries deltas
     deltas = {k: torch.diff(t, prepend=torch.tensor([t[0]])).unsqueeze(0).view(1,t.shape[0],1) for k,t in timelines.items()}
     N=data["m1"].shape[0]
     # Concatenate data and timelines
-    calX = {k: torch.cat([data[k], deltas[k].expand(N,-1,-1), timelines[k].unsqueeze(0).unsqueeze(-1).expand(N,-1,-1)], dim=2).unsqueeze(1) for k in data.keys()}
+    calX = {k: torch.cat([data[k], deltas[k].expand(N,-1,-1), timelines[k].unsqueeze(0).unsqueeze(-1).expand(N,-1,-1)], dim=2).unsqueeze(1).to(device) for k in data.keys()}
     return calX
