@@ -1,16 +1,14 @@
 import torch
 import os
 
-os.environ['CUDA_LAUNCH_BLOCKING']="1"
-os.environ['TORCH_USE_CUDA_DSA'] = "1"
+#os.environ['CUDA_LAUNCH_BLOCKING']="1"
+#os.environ['TORCH_USE_CUDA_DSA'] = "1"
 #import fast_transformers
 #import matplotlib
 #matplotlib.use("tkagg")
 import matplotlib.pyplot as plt
 
 #from fast_transformers.attention import LinearAttention, CausalLinearAttention
-
-from src.causal_product import causal_dot_product
 
 elu_feature_map = lambda x: torch.nn.functional.elu(x) + 1
 
@@ -40,7 +38,11 @@ if __name__ == "__main__":
     data = {k: torch.rand(N, t, d) for i,(k,t,d) in enumerate(zip(names, T, D))}
 
     y = compute_target2(data, timelines, d_out)
-    device="cuda:0"
+    device="cpu"
+    if torch.cuda.is_available():
+
+        device = "cuda:0"
+
     model =  CAMD(M, Dmax, Dmax, Dmax, n_layers=1, activation="relu", layernorm=False, skipconnections=True, skiptemperature=True).to(device)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)

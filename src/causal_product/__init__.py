@@ -42,11 +42,11 @@ def causal_dot_productCPU(Q, K, V, tq, tkv):
     #print("new modality")
     #print(Q.shape, tq)
     #print(K.shape, tkv)
-    product = causal_dot_numerator_product(Q, K, V, tq, tkv)
+    product = causal_dot_numerator_productCPU(Q, K, V, tq, tkv)
     N, H, L = V.shape[:-1]
     Vdummy = torch.ones((N, H, L, 1), device=V.device)
 
-    normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
+    normalization = causal_dot_numerator_productCPU(Q, K, Vdummy, tq, tkv)
     return product / (normalization + 1e-6)
 
 
@@ -179,3 +179,4 @@ class CausalDotProductNumeratorCPU(torch.autograd.Function):
 
 # Alias the autograd functions to python style snake case naming
 causal_dot_numerator_product = CausalDotProductNumerator.apply
+causal_dot_numerator_productCPU = CausalDotProductNumeratorCPU.apply
