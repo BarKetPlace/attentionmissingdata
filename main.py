@@ -1,7 +1,11 @@
 import torch
+import os
+
+os.environ['CUDA_LAUNCH_BLOCKING']="1"
+os.environ['TORCH_USE_CUDA_DSA'] = "1"
 #import fast_transformers
-import matplotlib
-matplotlib.use("tkagg")
+#import matplotlib
+#matplotlib.use("tkagg")
 import matplotlib.pyplot as plt
 
 #from fast_transformers.attention import LinearAttention, CausalLinearAttention
@@ -36,23 +40,23 @@ if __name__ == "__main__":
     data = {k: torch.rand(N, t, d) for i,(k,t,d) in enumerate(zip(names, T, D))}
 
     y = compute_target2(data, timelines, d_out)
-    
-    model =  CAMD(M, Dmax, Dmax, Dmax, n_layers=1, activation="relu", layernorm=False, skipconnections=True, skiptemperature=True)
+    device="cuda:0"
+    model =  CAMD(M, Dmax, Dmax, Dmax, n_layers=1, activation="relu", layernorm=False, skipconnections=True, skiptemperature=True).to(device)
     
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
 
     L = []
 
-    X = prep_data(data, timelines)
+    X = prep_data(data, timelines,device=device)
     
     num_epochs = 1000
     every_e = num_epochs // 20
     figsize = (15, 5)
-    fig, ax = plt.subplots(figsize=figsize)
+    #fig, ax = plt.subplots(figsize=figsize)
     for epoch in range(num_epochs):
         yhat = model(X)
 
-        loss = torch.nn.functional.mse_loss(yhat, y)
+        loss = torch.nn.functional.mse_loss(yhat, y.to(device))
         loss.backward()
 
         optimizer.step()
@@ -60,7 +64,7 @@ if __name__ == "__main__":
         L.append(loss.item())
         if (epoch % every_e) == 0:
             print(epoch, L[-1])
-            ax.cla()
-            _, images = plot_data(data,timelines,target=y[0],prediction=yhat[0].detach(),dim=0,figsize=figsize,masks=False,ax=ax)
-            plt.pause(0.5)
+            #ax.cla()
+            #_, images = plot_data(data,timelines,target=y[0],prediction=yhat[0].detach(),dim=0,figsize=figsize,masks=False,ax=ax)
+            #plt.pause(0.5)
     print("")

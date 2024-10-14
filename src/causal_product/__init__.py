@@ -24,7 +24,21 @@ except ImportError:
 #from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
 
-def causal_dot_product(Q, K, V, tq, tkv):
+def causal_dot_product(Q, K, V, *args):
+    #print("new modality")
+    #print(Q.shape, Q.device,V.device)
+    
+    product = causal_dot_numerator_product(Q, K, V)
+    
+    N, H, L = V.shape[:-1]
+    #print(torch.ones((10,), device="cuda:0"),V.device)
+
+    Vdummy = torch.ones((N, H, L, 1), device=V.device)
+
+    normalization = causal_dot_numerator_product(Q, K, Vdummy)
+    return product / (normalization + 1e-6)
+
+def causal_dot_productCPU(Q, K, V, tq, tkv):
     #print("new modality")
     #print(Q.shape, tq)
     #print(K.shape, tkv)
@@ -35,16 +49,78 @@ def causal_dot_product(Q, K, V, tq, tkv):
     normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
     return product / (normalization + 1e-6)
 
+
 class CausalDotProductNumerator(torch.autograd.Function):
     """Compute the weighted sum of values but attending only to previous
     values."""
     dot_numerator = {
         "cpu": causal_dot_numerator_product_cpu,
-        "cuda": causal_dot_product_cuda
+        "cuda": causal_dot_numerator_product_cuda
     }
     dot_numerator_backward = {
         "cpu": causal_dot_numerator_backward_cpu,
-        "cuda": causal_dot_backward_cuda
+        "cuda": causal_dot_numerator_backward_cuda
+    }
+    
+    @staticmethod
+    def forward(ctx, Q, K, V):
+        # Save the inputs for the gradient computation
+        ctx.save_for_backward(Q, K, V)
+
+        # Create the output tensor
+        device = Q.device
+        N, H, L, _ = Q.shape
+        _, _, _, M = V.shape
+        product = torch.zeros((N, H, L, M), device=device)
+        #print(product)
+        # Actually perform the numerator of dot product
+        CausalDotProductNumerator.dot_numerator[device.type](
+            Q.data,
+            K.data,
+            V.data,
+            product
+        )
+        #print(product)
+
+        #product_ref = causal_dot_product_reference(Q, K, V)
+        return product
+
+    @staticmethod
+    def backward(ctx, grad_out):
+        # Extract the saved tensors
+        Q, K, V = ctx.saved_tensors
+
+        # Allocate memory for the gradients
+        grad_Q = torch.zeros_like(Q)
+        grad_K = torch.zeros_like(K)
+        grad_V = torch.zeros_like(V)
+
+        # Actually compute the gradients
+        CausalDotProductNumerator.dot_numerator_backward[Q.device.type](
+            Q.data,
+            K.data,
+            V.data,
+            grad_out,
+            grad_Q,
+            grad_K,
+            grad_V
+        )
+        #print("Numerator grad_Q", grad_Q)
+        if (grad_Q.isnan().any() or grad_Q.isinf().any()):
+            print("")
+        return grad_Q, grad_K, grad_V
+
+
+class CausalDotProductNumeratorCPU(torch.autograd.Function):
+    """Compute the weighted sum of values but attending only to previous
+    values."""
+    dot_numerator = {
+        "cpu": causal_dot_numerator_product_cpu,
+        "cuda": causal_dot_numerator_product_cuda
+    }
+    dot_numerator_backward = {
+        "cpu": causal_dot_numerator_backward_cpu,
+        "cuda": causal_dot_numerator_backward_cuda
     }
 
     @staticmethod
