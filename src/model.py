@@ -11,10 +11,10 @@ class CAMD(torch.nn.Module):
         self.d_out = d_out
         self.d_qk = d_qk
         
-        self.W_Q = MLP(d_qk + 2, [d_qk+ 2]*n_layers,d_qk+ 2,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) ##torch.nn.Linear(d_qk + 2, d_qk)
-        self.W_K = MLP(d_qk + 2, [d_qk+ 2]*n_layers,d_qk+ 2,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) ##torch.nn.Linear(d_qk + 2, d_qk)
-        #self.W_V = MLP(d_v + 2, [d_v]*n_layers,d_v,activation,   layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature)    ##torch.nn.Linear(d_v + 2, d_v)
+        self.W_Q = MLP(d_qk + 2, [d_qk+ 2]*n_layers,d_qk+ 2,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature)
         
+        self.W_K = [MLP(d_qk + 2, [d_qk+ 2]*n_layers,d_qk+ 2,activation,layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) for _ in range(M)]
+
         self.W_out = torch.nn.Linear(M*d_v, d_out)
 
     def forward(self, calX):
@@ -26,8 +26,8 @@ class CAMD(torch.nn.Module):
 
         t1 = calX["m1"][0, 0, :, -1]
         
-        for k, X in calX.items():
-            K = self.W_K(X)
+        for im, (k, X) in enumerate(calX.items()):
+            K = self.W_K[im](X)
             V = X
 
             t2 = X[0,0,:,-1]
