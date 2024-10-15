@@ -9,31 +9,38 @@ import torch
 from .causal_product_cpu import causal_dot_product as causal_dot_product_cpu, \
                                  causal_dot_backward as causal_dot_backward_cpu
 
-from .causal_product_numerator_cpu import causal_dot_numerator_product as causal_dot_numerator_product_cpu, \
-                                 causal_dot_numerator_backward as causal_dot_numerator_backward_cpu
 
-from .causal_product_numerator_cuda import \
-    causal_dot_numerator_product as causal_dot_numerator_product_cuda, \
-    causal_dot_numerator_backward as causal_dot_numerator_backward_cuda
+from .causal_product_numerator_cpu import causal_dot_product as causal_dot_numerator_product_cpu, \
+                                 causal_dot_backward as causal_dot_numerator_backward_cpu
+
+
+causal_dot_numerator_product_cuda, causal_dot_numerator_backward_cuda=None,None
+causal_dot_product_cuda, causal_dot_backward_cuda = None, None
+
+if torch.cuda.is_available():
+    from .causal_product_cuda import causal_dot_product as causal_dot_product_cuda, \
+                                     causal_dot_backward as causal_dot_backward_cuda
+
+    from .causal_product_numerator_cuda import \
+        causal_dot_numerator_product as causal_dot_numerator_product_cuda, \
+        causal_dot_numerator_backward as causal_dot_numerator_backward_cuda
 
 
 def causal_dot_product(Q, K, V, tq, tkv):
-    #print("new modality")
-    #print(Q.shape, tq)
-    #print(K.shape, tkv)
     product = causal_dot_numerator_product(Q, K, V, tq, tkv)
+
     N, H, L = V.shape[:-1]
     Vdummy = torch.ones((N, H, L, 1), device=V.device)
 
-    normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
-    return product / (normalization + 1e-6)
+    #normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
+    return product #/ (normalization + 1e-6)
 
-def causal_dot_product_ref(Q,K,V):
+def causal_dot_product_ref(Q,K,V, tq, tkv):
     product_ref = causal_dot_numerator_product_ref(Q, K, V)
 
-    normalization_ref = torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2)).unsqueeze(-1)
+    #normalization_ref = torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2)).unsqueeze(-1)
     
-    ref_output = product_ref / (normalization_ref+1e-6)
+    ref_output = product_ref #/ (normalization_ref+1e-6)
     return ref_output
 
 
@@ -59,6 +66,7 @@ class CausalDotProductNumerator(torch.autograd.Function):
         #print("Compute on",device.type)
         N, H, L, _ = Q.shape
         _, _, _, M = V.shape
+        
         product = torch.zeros((N, H, L, M), device=device)
         #print(device.type, CausalDotProductNumerator.dot_numerator[device.type])
         # Actually perform the numerator of dot product
@@ -66,8 +74,7 @@ class CausalDotProductNumerator(torch.autograd.Function):
             Q.data,
             K.data,
             V.data,
-            tq,
-            tkv,
+            tq,tkv,
             product
         )
 
@@ -97,23 +104,22 @@ class CausalDotProductNumerator(torch.autograd.Function):
             grad_K,
             grad_V
         )
-        #print("Numerator grad_Q", grad_Q)
-        if (grad_Q.isnan().any() or grad_Q.isinf().any()):
-            print("")
+
         return grad_Q, grad_K, grad_V, grad_tq, grad_tkv
+
 
 class CausalDotProductRef(torch.autograd.Function):
     """Compute the weighted sum of values but attending only to previous
     values."""
     dot_numerator = {
         "cpu": causal_dot_product_cpu,
-        #"cuda": causal_dot_numerator_product_cuda
+        "cuda": causal_dot_product_cuda
     }
     dot_numerator_backward = {
         "cpu": causal_dot_backward_cpu,
-        #"cuda": causal_dot_numerator_backward_cuda
+        "cuda": causal_dot_backward_cuda
     }
-    
+
     @staticmethod
     def forward(ctx, Q, K, V):
         # Save the inputs for the gradient computation
@@ -121,11 +127,11 @@ class CausalDotProductRef(torch.autograd.Function):
 
         # Create the output tensor
         device = Q.device
-        #print("Compute on",device.type)
+
         N, H, L, _ = Q.shape
         _, _, _, M = V.shape
         product = torch.zeros((N, H, L, M), device=device)
-        #print(device.type, CausalDotProductNumerator.dot_numerator[device.type])
+
         # Actually perform the numerator of dot product
         CausalDotProductRef.dot_numerator[device.type](
             Q.data,
@@ -134,7 +140,6 @@ class CausalDotProductRef(torch.autograd.Function):
             product
         )
 
-        #product_ref = causal_dot_product_reference(Q, K, V)
         return product
 
     @staticmethod
@@ -157,6 +162,7 @@ class CausalDotProductRef(torch.autograd.Function):
             grad_K,
             grad_V
         )
+        
         return grad_Q, grad_K, grad_V
 
 

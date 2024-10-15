@@ -1,5 +1,5 @@
 import torch
-import os
+import os, sys
 
 #os.environ['CUDA_LAUNCH_BLOCKING']="1"
 #os.environ['TORCH_USE_CUDA_DSA'] = "1"
@@ -23,9 +23,8 @@ if __name__ == "__main__":
     Dmax = 2
     N = 1
     d_out = 2
-    test(M,2,10)
-    
-    #torch.manual_seed(0)
+    test()
+    sys.exit(0)
     
     names = ["m{}".format(i+1) for i in range(M)]
 
@@ -34,8 +33,8 @@ if __name__ == "__main__":
     T = [Tmax] + torch.randint(3, Tmax, (M-1,)).long().numpy().tolist()
     T = [Tmax] + [Tmax]*(M-1)  #torch.randint(3, Tmax, (M-1,)).long().numpy().tolist()
 
-    timelines = {k: torch.sort(torch.randn(t).abs(), descending=False).values for k,t in zip(names, T)}
-    #timelines = {k: torch.arange(t, dtype=torch.float) for k,t in zip(names, T)}
+    #timelines = {k: torch.sort(torch.randn(t).abs(), descending=False).values for k,t in zip(names, T)}
+    timelines = {k: torch.arange(t, dtype=torch.float) for k,t in zip(names, T)}
 
     data = {k: torch.rand(N, t, d) for i,(k,t,d) in enumerate(zip(names, T, D))}
 

@@ -16,11 +16,18 @@ CFLAGS=-Wno-unused-result -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstac
 includes=-I$(python_root)/lib/python3.12/site-packages/torch/include -I$(python_root)/lib/python3.12/site-packages/torch/include/torch/csrc/api/include -I$(python_root)/lib/python3.12/site-packages/torch/include/TH -I$(python_root)/lib/python3.12/site-packages/torch/include/THC -I$(python_root)/include -I/usr/include/python3.12 
 
 
-all:  gpu cpu ref
+all:  gpu cpu cpuref gpuref
 
 gpu: $(dir)/causal_product_numerator_cuda.cpython-312-x86_64-linux-gnu.so
+
 cpu: $(dir)/causal_product_numerator_cpu.cpython-312-x86_64-linux-gnu.so
-ref: $(dir)/causal_product_cpu.cpython-312-x86_64-linux-gnu.so
+
+cpuref: $(dir)/causal_product_cpu.cpython-312-x86_64-linux-gnu.so
+
+gpuref: $(dir)/causal_product_cuda.cpython-312-x86_64-linux-gnu.so
+
+$(dir)/causal_product_cuda.cpython-312-x86_64-linux-gnu.so: $(dir)/causal_product_cuda.o 
+	x86_64-linux-gnu-g++ -shared -Wl,-O1 -Wl,-Bsymbolic-functions -Wl,-Bsymbolic-functions -Wl,-z,relro -g -fwrapv -O2 $^ -L$(python_root)/lib/python3.12/site-packages/torch/lib -L/usr/local/cuda-$(CUDA)/lib64 -L/usr/lib/x86_64-linux-gnu -lc10 -ltorch -ltorch_cpu -ltorch_python -lcudart -lc10_cuda -ltorch_cuda -o $@
 
 $(dir)/causal_product_cpu.cpython-312-x86_64-linux-gnu.so:$(dir)/causal_product_cpu.o 
 	x86_64-linux-gnu-g++ $(CLFLAGS) $^ $(LFLAGS) -o $@
