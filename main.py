@@ -15,7 +15,7 @@ elu_feature_map = lambda x: torch.nn.functional.elu(x) + 1
 
 from src.dataset import compute_target, prep_data, plot_data,compute_target2
 from src.model import CAMD
-#from test import test
+from test import test
 
 if __name__ == "__main__":
     M = 3
@@ -23,6 +23,8 @@ if __name__ == "__main__":
     Dmax = 2
     N = 1
     d_out = 2
+    test(M,2,10)
+    
     #torch.manual_seed(0)
     
     names = ["m{}".format(i+1) for i in range(M)]

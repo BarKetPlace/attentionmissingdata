@@ -1,19 +1,19 @@
 import torch
-import fast_transformers
-
+#import fast_transformers
+import sys
 from src.causal_product import causal_dot_product
-from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
+#from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
 def test(M,Dmax,Tmax):
     N=1
     names = ["m{}".format(i+1) for i in range(M)]
 
     D = torch.ones(M).long() * Dmax
-    #T = [Tmax] + torch.randint(Tmax//3,Tmax,(M-1,)).long().numpy().tolist()# [Tmax]*()
-    T = [Tmax] + [Tmax]*(M-1)
+    T = [Tmax] + torch.randint(Tmax//3,Tmax,(M-1,)).long().numpy().tolist()# [Tmax]*()
+    #T = [Tmax] + [Tmax]*(M-1)
 
-    #timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
-    timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
+    timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
+    #timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
 
     data = {k: torch.randn(N, t, d) for k,t,d in zip(names, T, D)}
 
@@ -23,10 +23,11 @@ def test(M,Dmax,Tmax):
     x2 = data["m2"]
     t2 = timelines["m2"].reshape(-1)
     
-    Wref = torch.randn((Dmax, Dmax))
-    Wnew = Wref.clone()#
-    Wnew.requires_grad_(True)
-    Wref.requires_grad_(True)
+    Wcpu = torch.randn((Dmax, Dmax))
+    Wgpu = Wcpu.clone()#
+
+    Wgpu.requires_grad_(True)
+    Wcpu.requires_grad_(True)
 
     query = x1
     # Number of heads=1, 
@@ -41,35 +42,30 @@ def test(M,Dmax,Tmax):
     values = value.unsqueeze(1)
 
     # queries,keys and values of shape (N, h, T, d)
-    print("\n".join([str(d.shape) for d in [queries@Wnew, keys@Wnew, values, t1, t2]]))
+    print("\n".join([str(d.shape) for d in [queries@Wgpu, keys@Wgpu, values, t1, t2]]))
 
     #print("Queries:",queries[0,0]@Wnew)
     #print("Keys:",keys[0,0]@Wnew)
     #print("Values:",values[0,0]@Wnew)
-    print("Tq:",  t1)
+    print("Tq:", t1)
     print("Tkv:", t2)
-    print(t1.reshape(-1,1)>=t2.reshape(1,-1))
+    print(t1.reshape(-1,1) >= t2.reshape(1,-1))
     #output = causal_dot_product(queries@Wnew, keys@Wnew, values, t1, t2)
     
-    Q = queries@Wnew
-    K = keys@Wnew
-    V = values
-    output = causal_dot_product(Q, K, V, t1, t2)
-    
-   # N, H, L = V.shape[:-1]
-    #Vdummy = torch.ones((N, H, L, 1), device=V.device)
+    outputGPU = causal_dot_product((queries@Wgpu).cuda(), (keys@Wgpu).cuda(), values.cuda(), t1.cuda(), t2.cuda())
+    output = causal_dot_product((queries@Wcpu).cpu(), (keys@Wcpu).cpu(), values.cpu(), t1.cpu(), t2.cpu())
 
-    #normalization = causal_dot_numerator_product(Q, K, Vdummy, t1, t2)
-    #output = product / (normalization+1e-6)
+    print("mean|GPU-CPU|^2=", (outputGPU.detach().cpu()-output.detach()).square().mean())
 
-    print("Output")
-    print(output)
-    loss=(output**2).sum()
-    loss.backward()
+    lossCPU=(output**2).sum()
+    lossCPU.backward()
 
-    print("Backward")
-    print(Wnew.grad)
+    lossGPU=(outputGPU**2).sum()
+    lossGPU.backward()
 
+    print("mean|GradGPU-GradCPU|^2=", (Wgpu.grad.cpu()-Wcpu.grad).square().mean())
+
+    sys.exit(0)
     key_lengths = fast_transformers.masking.LengthMask(torch.tensor([Tmax]*N).long(), max_len=None, device=None)
     query_lengths = fast_transformers.masking.LengthMask(torch.tensor([Tmax]*N).long(), max_len=None, device=None)
     
@@ -86,6 +82,7 @@ def test(M,Dmax,Tmax):
 
     def norm_ref(Q,K):
         return torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2)).unsqueeze(-1)
+
     normalization_ref = norm_ref(Q,K)
     
     ref_output = product_ref / (normalization_ref+1e-6)
