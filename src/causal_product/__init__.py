@@ -9,13 +9,13 @@ import torch
 from .causal_product_numerator_cpu import causal_dot_numerator_product as causal_dot_numerator_product_cpu, \
                                  causal_dot_numerator_backward as causal_dot_numerator_backward_cpu
 
+#causal_dot_numerator_product_cpu = causal_dot_numerator_backward_cpu = None
 
-try:
-    from .causal_product_numerator_cuda import \
-        causal_dot_numerator_product as causal_dot_numerator_product_cuda, \
-        causal_dot_numerator_backward as causal_dot_numerator_backward_cuda
-except ImportError:
-    causal_dot_numerator_product_cuda = causal_dot_numerator_backward_cuda = None
+from .causal_product_numerator_cuda import \
+    causal_dot_numerator_product as causal_dot_numerator_product_cuda, \
+    causal_dot_numerator_backward as causal_dot_numerator_backward_cuda
+#except ImportError:
+#    causal_dot_numerator_product_cuda = causal_dot_numerator_backward_cuda = None
 
 
 def causal_dot_product(Q, K, V, tq, tkv):
@@ -50,10 +50,11 @@ class CausalDotProductNumerator(torch.autograd.Function):
 
         # Create the output tensor
         device = Q.device
+        #print("Compute on",device.type)
         N, H, L, _ = Q.shape
         _, _, _, M = V.shape
         product = torch.zeros((N, H, L, M), device=device)
-
+        #print(device.type, CausalDotProductNumerator.dot_numerator[device.type])
         # Actually perform the numerator of dot product
         CausalDotProductNumerator.dot_numerator[device.type](
             Q.data,

@@ -68,20 +68,6 @@ inline void vm_dot(float *v, float *m, float *out, int A, int B) {
     }
 }
 
-//inline void vm_dot(float *v, float *m, float *out, int A, int B) {
-   // Initialize the output vector to zero
-//    for (int j = 0; j < B; ++j) {
-//        out[j] = 0.0f;
-//    }
-
-  // Compute the dot product of vector v and matrix m
-//    for (int i = 0; i < A; ++i) {
-//        for (int j = 0; j < B; ++j) {
-//            out[j] += v[i] * m[i * B + j];
-//        }
-//    }
-//}
-
 
 /**
  * Implement a vector transposed-matrix product and save it into out.
@@ -253,15 +239,13 @@ void causal_dot_numerator_backward(
                     E,
                     M
                 );
-
             }
 
             // Compute the gradient wrt the keys and values
             kv.zero_();
-            l_kv = L_kv-1;
-            int l_kv_write = L_kv-1;
-            for (int l=L-1; l>=0; l--) {
-                while ((l_kv>=0) && (tqa[l] <= tkva[l_kv])) {
+            int l = L-1;
+            for (int l_kv=L_kv-1; l_kv>=0; l_kv--) {
+                while ((l>=0) && (tqa[l] <= tkva[l_kv])) {
                     vvt_dot(
                         &qa[n][h][l][0],
                         &ga[n][h][l][0],
@@ -269,26 +253,25 @@ void causal_dot_numerator_backward(
                         E,
                         M
                     );
-                    l_kv--;
+                    l--;
                 }
 
-                if (l_kv_write>=0){
-                    vmt_dot(
-                        &va[n][h][l_kv_write][0],
-                        kvp,
-                        &gka[n][h][l_kv_write][0],
-                        E,
-                        M
-                    );
-                    vm_dot(
-                        &ka[n][h][l_kv_write][0],
-                        kvp,
-                        &gva[n][h][l_kv_write][0],
-                        E,
-                        M
-                    );
-                    l_kv_write--;
-                }
+                
+                vmt_dot(
+                    &va[n][h][l_kv][0],
+                    kvp,
+                    &gka[n][h][l_kv][0],
+                    E,
+                    M
+                );
+                vm_dot(
+                    &ka[n][h][l_kv][0],
+                    kvp,
+                    &gva[n][h][l_kv][0],
+                    E,
+                    M
+                );
+                
 
             }
         }
