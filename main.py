@@ -19,11 +19,11 @@ from test import test
 
 if __name__ == "__main__":
     M = 3
-    Tmax = 10
+    Tmax = 1000
     Dmax = 2
     N = 1
     d_out = 2
-
+    test()
     names = ["m{}".format(i+1) for i in range(M)]
 
     # Create signals from M modalities, all with the same dimension and length, with irregular sampling
@@ -39,6 +39,7 @@ if __name__ == "__main__":
     y = compute_target2(data, timelines, d_out)
     device="cpu"
     if torch.cuda.is_available():
+        torch.cuda.init()
         device = "cuda:0"
 
     model =  CAMD(M, Dmax, Dmax, Dmax, n_layers=1, activation="relu", layernorm=False, skipconnections=True, skiptemperature=True).to(device)

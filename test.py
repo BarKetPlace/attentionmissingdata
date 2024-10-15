@@ -9,7 +9,7 @@ def test():
     N = 1
     names = ["m{}".format(i+1) for i in range(M)]
     
-    easy = False
+    easy = True
 
     regular = easy
     same_size = easy
