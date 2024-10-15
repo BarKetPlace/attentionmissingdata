@@ -1,6 +1,3 @@
-
-
-
 root_dir=.
 ifdef remote
 	root_dir=/mnt/berzelius/attentionmissingdata
@@ -8,10 +5,8 @@ endif
 ifndef CUDA
 	CUDA=12.2
 endif
-PWD=
+
 python_root=$(shell pwd)/pyenv
-test:
-	echo $(python_root)
 
 dir=$(root_dir)/src/causal_product
 
