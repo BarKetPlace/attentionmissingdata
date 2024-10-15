@@ -186,7 +186,7 @@ __global__ void causal_dot_backward_query_key_kernel(
     int l_kv=0;
     // QUERIES
     for (int l=0; l<L; l++) {
-      float res = 0, res_bw = 0;
+      float res = 0;
 
       while ( (l_kv<L_kv) && (tq[l] >= tkv[l_kv])) {
         for (int m_local = 0; m_local < M_BLOCK_SIZE && m_local + m_start < M; m_local++) {
@@ -206,30 +206,27 @@ __global__ void causal_dot_backward_query_key_kernel(
     }
 
     // KEYS
-    l_kv = L_kv - 1;
-    int l_kv_write = L_kv - 1;
+    int l = L - 1;
 
-    for (int l=L-1; l>=0; l--) {
-      float res = 0, res_bw = 0;
+    for (int l_kv=L_kv-1; l_kv>=0; l_kv--) {
+      float res_bw = 0;
 
-      while ( (l_kv < L_kv) && (tq[l] <= tkv[l_kv])) {
+      while ( (l_kv < L_kv) && (tq[l] >= tkv[l_kv])) {
         for (int m_local = 0; m_local < M_BLOCK_SIZE && m_local + m_start < M; m_local++) {
           shared_kv_bw[m_local*E + e] += queries[n][h][l][e] * grad_out[n][h][l][m_start + m_local];
         }
-      l_kv--;
+      l--;
       }
 
-      if (l_kv_write>=0){
-        for (int m_local = 0; m_local < M_BLOCK_SIZE && m_local + m_start < M; m_local++) {
-          res_bw += values[n][h][l_kv_write][m_start + m_local] * shared_kv_bw[m_local*E + e];
-        }
-
-        atomicAdd(
-          &grad_keys[n][h][l_kv_write][e],
-          res_bw
-        );
-        l_kv_write--;
+      for (int m_local = 0; m_local < M_BLOCK_SIZE && m_local + m_start < M; m_local++) {
+        res_bw += values[n][h][l_kv][m_start + m_local] * shared_kv_bw[m_local*E + e];
       }
+
+      atomicAdd(
+        &grad_keys[n][h][l_kv][e],
+        res_bw
+      );
+      
     }
 }
 
@@ -262,32 +259,30 @@ __global__ void causal_dot_backward_value_kernel(
       shared_kv[m + e_local * M] = 0;
     }
 
-    int l_kv = L_kv - 1;
-    int l_kv_write = L_kv - 1;
+    
+    int l = L - 1;
     
     // VALUES
-    for (int l = L-1; l>=0; l--) {
+    for (int l_kv = L_kv-1; l_kv>=0; l_kv--) {
         
         float res = 0;
-        while ( (l_kv>=0) && (tq[l] <= tkv[l_kv])) {
+        while ((l>=0) && (tq[l] >= tkv[l_kv])) {
           for (int e_local = 0; e_local < E_BLOCK_SIZE && e_local + e_start < E; e_local++) {
             shared_kv[e_local*M + m] += queries[n][h][l][e_start + e_local] * grad_out[n][h][l][m];
           }
-          l_kv--;
+          l--;
         }
 
-        if (l_kv_write>=0){
-          for (int e_local = 0; e_local < E_BLOCK_SIZE && e_local + e_start < E; e_local++) {
-            res += keys[n][h][l_kv_write][e_start + e_local] * shared_kv[e_local*M + m];
-          }
-
-          atomicAdd(
-              &grad_values[n][h][l_kv_write][m],
-              res
-          );
-          l_kv_write--;
+        for (int e_local = 0; e_local < E_BLOCK_SIZE && e_local + e_start < E; e_local++) {
+          res += keys[n][h][l_kv][e_start + e_local] * shared_kv[e_local*M + m];
         }
-    }
+
+        atomicAdd(
+            &grad_values[n][h][l_kv][m],
+            res
+        );
+      }
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

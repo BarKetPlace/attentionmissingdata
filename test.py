@@ -83,7 +83,7 @@ def test():
         lossGPU.backward()
 
         if regular & same_size:
-            outputGPUREF = causal_dot_product_ref((queries@Wgpuref).cuda(), (keys@Wgpuref).cuda(), values.cuda())
+            outputGPUREF = causal_dot_product_ref((queries@Wgpuref).cuda(), (keys@Wgpuref).cuda(), values.cuda(), t1.cuda(), t2.cuda())
         
             lossGPUREF = (outputGPUREF**2).sum()
             lossGPUREF.backward()
