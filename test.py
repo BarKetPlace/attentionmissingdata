@@ -1,7 +1,7 @@
 import torch
 #import fast_transformers
 import sys
-from src.causal_product import causal_dot_product
+from src.causal_product import causal_dot_product,causal_dot_product_ref
 #from fast_transformers.causal_product import  causal_dot_product as causal_dot_product_reference
 
 def test(M,Dmax,Tmax):
@@ -9,11 +9,11 @@ def test(M,Dmax,Tmax):
     names = ["m{}".format(i+1) for i in range(M)]
 
     D = torch.ones(M).long() * Dmax
-    T = [Tmax] + torch.randint(Tmax//3,Tmax,(M-1,)).long().numpy().tolist()# [Tmax]*()
-    #T = [Tmax] + [Tmax]*(M-1)
+    #T = [Tmax] + torch.randint(Tmax//3,Tmax,(M-1,)).long().numpy().tolist()# [Tmax]*()
+    T = [Tmax] + [Tmax]*(M-1)
 
-    timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
-    #timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
+    #timelines = {k: torch.sort(torch.randn(t).abs(),descending=False).values*100 for k,t in zip(names, T)}
+    timelines = {k: torch.arange(t, dtype=torch.float)+10 for k,t in zip(names, T)}
 
     data = {k: torch.randn(N, t, d) for k,t,d in zip(names, T, D)}
 
@@ -25,7 +25,9 @@ def test(M,Dmax,Tmax):
     
     Wcpu = torch.randn((Dmax, Dmax))
     Wgpu = Wcpu.clone()#
-
+    Wref = Wcpu.clone()#
+    
+    Wref.requires_grad_(True)
     Wgpu.requires_grad_(True)
     Wcpu.requires_grad_(True)
 
@@ -50,20 +52,31 @@ def test(M,Dmax,Tmax):
     print("Tq:", t1)
     print("Tkv:", t2)
     print(t1.reshape(-1,1) >= t2.reshape(1,-1))
+    
     #output = causal_dot_product(queries@Wnew, keys@Wnew, values, t1, t2)
     
-    outputGPU = causal_dot_product((queries@Wgpu).cuda(), (keys@Wgpu).cuda(), values.cuda(), t1.cuda(), t2.cuda())
+    outputREF = causal_dot_product_ref((queries@Wref).cpu(), (keys@Wref).cpu(), values.cpu())
+    lossREF=(outputREF**2).sum()
+    lossREF.backward()
+
     output = causal_dot_product((queries@Wcpu).cpu(), (keys@Wcpu).cpu(), values.cpu(), t1.cpu(), t2.cpu())
-
-    print("mean|GPU-CPU|^2=", (outputGPU.detach().cpu()-output.detach()).square().mean())
-
+    
     lossCPU=(output**2).sum()
     lossCPU.backward()
 
-    lossGPU=(outputGPU**2).sum()
-    lossGPU.backward()
+    print("mean|REF-CPU|^2=", (outputREF.detach()-output.detach()).square().mean())
 
-    print("mean|GradGPU-GradCPU|^2=", (Wgpu.grad.cpu()-Wcpu.grad).square().mean())
+    print("mean|GradREF-GradCPU|^2=", (Wref.grad-Wcpu.grad).square().mean())
+
+    if torch.cuda.is_available():
+        outputGPU = causal_dot_product((queries@Wgpu).cuda(), (keys@Wgpu).cuda(), values.cuda(), t1.cuda(), t2.cuda())
+
+        lossGPU=(outputGPU**2).sum()
+        lossGPU.backward()
+
+        print("mean|GPU-CPU|^2=", (outputGPU.detach().cpu()-output.detach()).square().mean())
+
+        print("mean|GradGPU-GradCPU|^2=", (Wgpu.grad.cpu()-Wcpu.grad).square().mean())
 
     sys.exit(0)
     key_lengths = fast_transformers.masking.LengthMask(torch.tensor([Tmax]*N).long(), max_len=None, device=None)
@@ -78,14 +91,6 @@ def test(M,Dmax,Tmax):
     Q = queries@Wref
     K = keys@Wref
 
-    product_ref = causal_dot_product_reference(Q, K, V)
-
-    def norm_ref(Q,K):
-        return torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2)).unsqueeze(-1)
-
-    normalization_ref = norm_ref(Q,K)
-    
-    ref_output = product_ref / (normalization_ref+1e-6)
 
     # Compute the normalizers
 

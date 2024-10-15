@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 elu_feature_map = lambda x: torch.nn.functional.elu(x) + 1
 
 
-from src.dataset import compute_target, prep_data, plot_data,compute_target2
+from src.dataset import compute_target, prep_data, plot_data, compute_target2
 from src.model import CAMD
 from test import test
 
