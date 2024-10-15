@@ -23,8 +23,8 @@ if __name__ == "__main__":
     Dmax = 2
     N = 1
     d_out = 2
-    test()
-    sys.exit(0)
+    #test()
+    #sys.exit(0)
     
     names = ["m{}".format(i+1) for i in range(M)]
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     model =  CAMD(M, Dmax, Dmax, Dmax, n_layers=1, activation="relu", layernorm=False, skipconnections=True, skiptemperature=True).to(device)
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     L = []
 
