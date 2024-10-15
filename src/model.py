@@ -1,4 +1,5 @@
 import torch
+from src.causal_product import causal_dot_product_ref as causal_dot_product
 from src.causal_product import causal_dot_product
 
 
