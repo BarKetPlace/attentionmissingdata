@@ -23,9 +23,7 @@ if __name__ == "__main__":
     Dmax = 2
     N = 1
     d_out = 2
-    #test()
-    #sys.exit(0)
-    
+
     names = ["m{}".format(i+1) for i in range(M)]
 
     # Create signals from M modalities, all with the same dimension and length, with irregular sampling
@@ -41,7 +39,6 @@ if __name__ == "__main__":
     y = compute_target2(data, timelines, d_out)
     device="cpu"
     if torch.cuda.is_available():
-
         device = "cuda:0"
 
     model =  CAMD(M, Dmax, Dmax, Dmax, n_layers=1, activation="relu", layernorm=False, skipconnections=True, skiptemperature=True).to(device)
@@ -55,7 +52,8 @@ if __name__ == "__main__":
     num_epochs = 1000
     every_e = num_epochs // 20
     figsize = (15, 5)
-    #fig, ax = plt.subplots(figsize=figsize)
+    if device=="cpu":
+        fig, ax = plt.subplots(figsize=figsize)
     for epoch in range(num_epochs):
         yhat = model(X)
 
@@ -67,7 +65,8 @@ if __name__ == "__main__":
         L.append(loss.item())
         if (epoch % every_e) == 0:
             print(epoch, L[-1])
-            #ax.cla()
-            #_, images = plot_data(data,timelines,target=y[0],prediction=yhat[0].detach(),dim=0,figsize=figsize,masks=False,ax=ax)
-            #plt.pause(0.5)
+            if device=="cpu":
+                ax.cla()
+                _, images = plot_data(data,timelines,target=y[0],prediction=yhat[0].detach(),dim=0,figsize=figsize,masks=False,ax=ax)
+                plt.pause(0.5)
     print("")
