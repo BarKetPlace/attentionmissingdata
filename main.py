@@ -23,7 +23,7 @@ if __name__ == "__main__":
     Dmax = 2
     N = 1
     d_out = 2
-    test()
+    #test()
     names = ["m{}".format(i+1) for i in range(M)]
 
     # Create signals from M modalities, all with the same dimension and length, with irregular sampling

@@ -32,15 +32,15 @@ def causal_dot_product(Q, K, V, tq, tkv):
     N, H, L = V.shape[:-1]
     Vdummy = torch.ones((N, H, L, 1), device=V.device)
 
-    #normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
-    return product #/ (normalization + 1e-6)
+    normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
+    return product / (normalization + 1e-6)
 
 def causal_dot_product_ref(Q,K,V, tq, tkv):
     product_ref = causal_dot_numerator_product_ref(Q, K, V)
 
-    #normalization_ref = torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2)).unsqueeze(-1)
+    normalization_ref = torch.einsum("nhli,nhli->nhl", Q, K.cumsum(2)).unsqueeze(-1)
     
-    ref_output = product_ref #/ (normalization_ref+1e-6)
+    ref_output = product_ref / (normalization_ref+1e-6)
     return ref_output
 
 
