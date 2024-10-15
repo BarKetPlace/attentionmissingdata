@@ -5,31 +5,9 @@
 //
 
 #include <torch/extension.h>
-#include <torch/torch.h>
+//#include <torch/torch.h>
 #include <iostream> // For std::cout
 
-void displayTensor(const torch::Tensor& tensor) {
-    // Display tensor dimensions
-    //std::cout << "Tensor shape: " << tensor.sizes() << std::endl; // Print tensor size
-
-    // Check if the tensor is not empty
-    if (tensor.numel() == 0) {
-        std::cout << "The tensor is empty." << std::endl;
-        return;
-    }
-
-    // Iterate and print values
-    // Use the contiguous view to ensure the data is laid out in memory as expected
-    auto tensor_contig = tensor.contiguous(); // Ensure tensor is contiguous for access
-    auto accessor = tensor_contig.accessor<float, 2>(); // Assuming tensor is of type float and 2D
-
-    for (int i = 0; i < tensor_contig.size(0); ++i) {
-        for (int j = 0; j < tensor_contig.size(1); ++j) {
-            std::cout << accessor[i][j] << " ";
-        }
-        std::cout << std::endl; // New line for each row
-    }
-}
 /**
  * Compute a*b^T and save it into out.
  *
@@ -56,6 +34,11 @@ inline void vvt_dot(float *a, float *b, float *out, int A, int B) {
  * m \in R^{AxB}
  */
 inline void vm_dot(float *v, float *m, float *out, int A, int B) {
+    // TODO: Consider removing the zeroing part and assuming out already
+    //       contains 0s
+    for (int i=0; i<B; i++) {
+        out[i] = 0;
+    }
 
     for (int i=0; i<A; i++) {
         float *oi = out;
@@ -89,6 +72,7 @@ inline void vmt_dot(float *v, float *m, float *out, int A, int B) {
         out++;
     }
 }
+
 
 
 /**
@@ -239,13 +223,16 @@ void causal_dot_numerator_backward(
                     E,
                     M
                 );
+
             }
 
             // Compute the gradient wrt the keys and values
             kv.zero_();
+            //l_kv = L_kv-1;
             int l = L-1;
+           
             for (int l_kv=L_kv-1; l_kv>=0; l_kv--) {
-                while ((l>=0) && (tqa[l] <= tkva[l_kv])) {
+                while ((l>=0) && (tqa[l] >= tkva[l_kv])) {
                     vvt_dot(
                         &qa[n][h][l][0],
                         &ga[n][h][l][0],
@@ -255,8 +242,7 @@ void causal_dot_numerator_backward(
                     );
                     l--;
                 }
-
-                
+        
                 vmt_dot(
                     &va[n][h][l_kv][0],
                     kvp,
@@ -271,7 +257,6 @@ void causal_dot_numerator_backward(
                     E,
                     M
                 );
-                
 
             }
         }
@@ -280,13 +265,13 @@ void causal_dot_numerator_backward(
 
 PYBIND11_MODULE(TORCH_EXTENSION_NAME, m) {
     m.def(
-        "causal_dot_numerator_product",
+        "causal_dot_product",
         &causal_dot_numerator_product,
         "Compute the weighted sum of values but attending only to previous "
         "values."
     );
     m.def(
-        "causal_dot_numerator_backward",
+        "causal_dot_backward",
         &causal_dot_numerator_backward,
         "Compute the gradient of queries, keys and values given the gradient "
         "of causal_dot_product."
