@@ -5,6 +5,7 @@
 #
 
 import torch
+from  multiprocessing.dummy import Pool
 
 from .causal_product_cpu import causal_dot_product as causal_dot_product_cpu, \
                                  causal_dot_backward as causal_dot_backward_cpu
@@ -27,12 +28,14 @@ if torch.cuda.is_available():
 
 
 def causal_dot_product(Q, K, V, tq, tkv):
-    product = causal_dot_numerator_product(Q, K, V, tq, tkv)
+    #product = causal_dot_numerator_product(Q, K, V, tq, tkv)
 
     N, H, L = V.shape[:-1]
     Vdummy = torch.ones((N, H, L, 1), device=V.device)
+    with Pool(2) as pool:
+        product, normalization = pool.starmap(causal_dot_numerator_product, [(Q, K, V, tq, tkv),(Q, K, Vdummy, tq, tkv)])
 
-    normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
+    #normalization = causal_dot_numerator_product(Q, K, Vdummy, tq, tkv)
     return product / (normalization + 1e-6)
 
 def causal_dot_product_ref(Q,K,V, tq, tkv):
@@ -43,7 +46,10 @@ def causal_dot_product_ref(Q,K,V, tq, tkv):
 
     Vdummy = torch.ones((N, H, L, 1), device=V.device)
 
-    normalization_ref = causal_dot_numerator_product_ref(Q, K, Vdummy)
+    #normalization_ref = causal_dot_numerator_product_ref(Q, K, Vdummy)
+    with Pool(2) as pool:
+        product_ref, normalization_ref = pool.starmap(causal_dot_numerator_product, [(Q, K, V),(Q, K, Vdummy)])
+
     ref_output = product_ref / (normalization_ref+1e-6)
     return ref_output
 

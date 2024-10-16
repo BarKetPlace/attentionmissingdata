@@ -69,8 +69,10 @@ def plot_data(data, timelines, target, prediction=None, dim=0, n=0,figsize=None,
         timel = timelines[k]
         ax.plot(timel, X, "-", label=k, marker='o')
     ax.plot(timelines["m1"],target[:,dim],linewidth=2,marker="o",color="black",label="Target")
-
-    ax.plot(timelines["m1"],sum(list(data.values()))[n,:,dim],linewidth=2,marker="o",color="gray",label="Sum data")
+    try:
+        ax.plot(timelines["m1"],sum(list(data.values()))[n,:,dim],linewidth=2,marker="o",color="gray",label="Sum data")
+    except:
+        pass
 
     if not (prediction is None):
         ax.plot(timelines["m1"],prediction[:,dim],linewidth=2,marker="o",color="darkred",label="Prediction")
@@ -80,7 +82,7 @@ def plot_data(data, timelines, target, prediction=None, dim=0, n=0,figsize=None,
     return return_plot,  images
 
 
-def prep_data(data,timelines,device="cpu"):
+def prep_data(data, timelines, device="cpu"):
     # Compute timeseries deltas
     deltas = {k: torch.diff(t, prepend=torch.tensor([t[0]])).unsqueeze(0).view(1,t.shape[0],1) for k,t in timelines.items()}
     N=data["m1"].shape[0]
