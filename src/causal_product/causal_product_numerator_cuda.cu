@@ -66,10 +66,10 @@ __global__ void causal_dot_product_kernel(
     }
     
     int l_kv = 0;
-    
+    float res = 0;
+
     for (int l=0; l<L; l++) {
-      float res = 0;
-      
+      res = 0;
       while ((l_kv<L_kv) && (tq[l] >= tkv[l_kv])) {
         
         for (int e_local = 0; e_local < E_BLOCK_SIZE && e_local + e_start < E; e_local++) {
@@ -184,9 +184,11 @@ __global__ void causal_dot_backward_query_key_kernel(
     }
 
     int l_kv=0;
+    float res = 0;
+
     // QUERIES
     for (int l=0; l<L; l++) {
-      float res = 0;
+      res = 0;
 
       while ( (l_kv<L_kv) && (tq[l] >= tkv[l_kv])) {
         for (int m_local = 0; m_local < M_BLOCK_SIZE && m_local + m_start < M; m_local++) {
@@ -207,9 +209,9 @@ __global__ void causal_dot_backward_query_key_kernel(
 
     // KEYS
     int l = L - 1;
-
+    float res_bw = 0;
     for (int l_kv=L_kv-1; l_kv>=0; l_kv--) {
-      float res_bw = 0;
+      res_bw = 0;
 
       while ( (l_kv < L_kv) && (tq[l] >= tkv[l_kv])) {
         for (int m_local = 0; m_local < M_BLOCK_SIZE && m_local + m_start < M; m_local++) {
@@ -261,11 +263,11 @@ __global__ void causal_dot_backward_value_kernel(
 
     
     int l = L - 1;
-    
+    float res = 0;
+
     // VALUES
     for (int l_kv = L_kv-1; l_kv>=0; l_kv--) {
-        
-        float res = 0;
+        res = 0;
         while ((l>=0) && (tq[l] >= tkv[l_kv])) {
           for (int e_local = 0; e_local < E_BLOCK_SIZE && e_local + e_start < E; e_local++) {
             shared_kv[e_local*M + m] += queries[n][h][l][e_start + e_local] * grad_out[n][h][l][m];
@@ -372,8 +374,8 @@ void causal_dot_backward(const torch::Tensor queries,
     //
     // This adds a small overhead every time we have to fall back to the old
     // kernel for the backward pass.
-    grad_queries.zero_();
-    grad_keys.zero_();
+    //grad_queries.zero_();
+    //grad_keys.zero_();
     causal_dot_backward_(queries, keys, values, tq, tkv, grad_out, grad_queries, grad_keys, grad_values);
 //  }
 }
