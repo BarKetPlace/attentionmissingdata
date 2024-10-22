@@ -46,6 +46,19 @@ def compute_target3(data,timelines,d_out):
 
     return y
 
+def compute_target4(data, timelines, d_out):
+    Tmax = data["m1"].shape[1]
+    N = data["m1"].shape[0]
+
+    y = torch.rand(N, Tmax, d_out)
+    #time_ref = timelines["m1"]
+
+    #for k in data.keys():
+    #    ikeep = torch.tensor([0])#torch.randint(timelines[k].shape[0],(1,))
+    #    y += data[k][:, [ikeep[0]], :]
+
+    return y
+
 def plot_data(data, timelines, target, prediction=None, dim=0, n=0,figsize=None,masks=False,ax=None):
     images=[]
     if masks:

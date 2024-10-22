@@ -45,7 +45,7 @@ $(dir)/%_cpu.o: $(dir)/%_cpu.cpp
 
 
 $(dir)/%_cuda.o: $(dir)/%_cuda.cu
-	/usr/local/cuda-$(CUDA)/bin/nvcc -ccbin /usr/bin/g++-12 $(includes) -I/usr/local/cuda-$(CUDA)/include -c $^ -o $@ -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options '-fPIC' -arch=compute_60 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -DTORCH_EXTENSION_NAME=$*_cuda -D_GLIBCXX_USE_CXX11_ABI=0 -std=c++17
+	/usr/local/cuda-$(CUDA)/bin/nvcc -ccbin /usr/bin/g++-12 $(includes) -I/usr/local/cuda-$(CUDA)/include -c $^ -o $@ -D TORCH_USE_CUDA_DSA -D__CUDA_NO_HALF_OPERATORS__ -D__CUDA_NO_HALF_CONVERSIONS__ -D__CUDA_NO_BFLOAT16_CONVERSIONS__ -D__CUDA_NO_HALF2_OPERATORS__ --expt-relaxed-constexpr --compiler-options '-fPIC' -arch=compute_60 -DTORCH_API_INCLUDE_EXTENSION_H -DPYBIND11_COMPILER_TYPE=\"_gcc\" -DPYBIND11_STDLIB=\"_libstdcpp\" -DPYBIND11_BUILD_ABI=\"_cxxabi1011\" -DTORCH_EXTENSION_NAME=$*_cuda -D_GLIBCXX_USE_CXX11_ABI=0 -std=c++17
 
 clean:
 	rm -f $(dir)/causal_product_numerator_cpu.cpython-310-x86_64-linux-gnu.so $(dir)/causal_product_denominator_cpu.cpython-310-x86_64-linux-gnu.so $(dir)/*.o
