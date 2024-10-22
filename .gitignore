@@ -1,0 +1,10 @@
+*.so
+*.pyc
+.ipynb_checkpoints/
+.vscode/
+envpy
+fast-transformers/
+presentation/
+*.dir
+*.sif
+src/causal_product/causal_product_numerator_cpu copy.cpp
