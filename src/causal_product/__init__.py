@@ -46,9 +46,9 @@ def causal_dot_product_ref(Q,K,V, tq, tkv):
 
     Vdummy = torch.ones((N, H, L, 1), device=V.device)
 
-    #normalization_ref = causal_dot_numerator_product_ref(Q, K, Vdummy)
+    ###normalization_ref = causal_dot_numerator_product_ref(Q, K, Vdummy)
     with Pool(2) as pool:
-        product_ref, normalization_ref = pool.starmap(causal_dot_numerator_product, [(Q, K, V),(Q, K, Vdummy)])
+        product_ref, normalization_ref = pool.starmap(causal_dot_numerator_product_ref, [(Q, K, V),(Q, K, Vdummy)])
 
     ref_output = product_ref / (normalization_ref+1e-6)
     return ref_output
@@ -77,6 +77,7 @@ class CausalDotProductNumerator(torch.autograd.Function):
         _, _, _, M = V.shape
         
         product = torch.zeros((N, H, L, M), device=device)
+
         # Actually perform the numerator of dot product
         CausalDotProductNumerator.dot_numerator[device.type](
             Q.data,
@@ -86,7 +87,6 @@ class CausalDotProductNumerator(torch.autograd.Function):
             product
         )
 
-        #product_ref = causal_dot_product_reference(Q, K, V)
         return product
 
     @staticmethod
@@ -98,8 +98,9 @@ class CausalDotProductNumerator(torch.autograd.Function):
         grad_Q = torch.zeros_like(Q)
         grad_K = torch.zeros_like(K)
         grad_V = torch.zeros_like(V)
-        grad_tq = torch.zeros_like(tq)
-        grad_tkv = torch.zeros_like(tkv)
+        
+        #grad_tq = torch.zeros_like(tq)
+        #grad_tkv = torch.zeros_like(tkv)
 
         # Actually compute the gradients
         CausalDotProductNumerator.dot_numerator_backward[Q.device.type](
@@ -113,7 +114,7 @@ class CausalDotProductNumerator(torch.autograd.Function):
             grad_V
         )
 
-        return grad_Q, grad_K, grad_V, grad_tq, grad_tkv
+        return grad_Q, grad_K, grad_V, None, None
 
 
 class CausalDotProductRef(torch.autograd.Function):
