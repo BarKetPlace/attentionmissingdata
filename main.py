@@ -143,8 +143,8 @@ if __name__ == "__main__":
     layer_opts=dict(layernorm=False, skipconnections=False, skiptemperature=False)
     model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=3, activation="relu", **layer_opts).to(device)
     def init_weights_to_zero(model):
-    for param in model.parameters():
-        param.data.zero_()  # Set the data of each parameter to 0
+        for param in model.parameters():
+            param.data.zero_()  # Set the data of each parameter to 0
 
     # Initialize the model's parameters to 0
     init_weights_to_zero(model)
