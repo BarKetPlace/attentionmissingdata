@@ -51,9 +51,9 @@ class CAMD(torch.nn.Module):
         Zout = torch.cat(results, dim=1)
 
         # Flatten all the heads
-        #Zout = Zout.transpose(1,2).flatten(start_dim=2,end_dim=3)
+        Zout = Zout.transpose(1,2).flatten(start_dim=2,end_dim=3)
 
-        yhat = Zout.sum(1)#[...,:self.d_out]
+        yhat = self.W_out(Zout)#.sum(1)#[...,:self.d_out]
         
         return yhat
 

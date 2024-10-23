@@ -130,9 +130,9 @@ if __name__ == "__main__":
     if torch.cuda.is_available():
         torch.cuda.init()
         device = "cuda:0"
-    plot=False
+    plot=not (device=="cuda:0")
 
-    X, timelines, yout = get_data("robot",device=device, tlim=1000)
+    X, timelines, yout = get_data("robot",device=device, tlim=100)
     
     y, target_cols = yout
 
@@ -142,7 +142,7 @@ if __name__ == "__main__":
     M = len(X)
     model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=3, activation="relu", layernorm=True, skipconnections=True, skiptemperature=True).to(device)
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     from torcheval.metrics.functional import r2_score, binary_auprc, binary_auroc, binary_precision, binary_recall, binary_f1_score, binary_accuracy
     from torchmetrics.functional.regression.spearman import _spearman_corrcoef_compute
     L = []
@@ -154,9 +154,12 @@ if __name__ == "__main__":
         fig, ax = plt.subplots(figsize=figsize)
 
     for epoch in range(num_epochs):
-        yhat = model(X)
+        yhat = torch.nn.functional.sigmoid(model(X))
+        loss0 = torch.nn.functional.cross_entropy(yhat[0,:,0], y[0,:,0].to(yhat.device))
+        loss1 = torch.nn.functional.cross_entropy(yhat[0,:,1], y[0,:,1].to(yhat.device))
 
-        loss = torch.nn.functional.mse_loss(yhat, y.to(yhat.device))
+        loss = (loss0+loss1)/2 #
+        #loss = torch.nn.functional.mse_loss(yhat, y.to(yhat.device))
         loss.backward()
         
         optimizer.step()
@@ -166,6 +169,11 @@ if __name__ == "__main__":
             print(epoch, L[-1])
             if plot and (device=="cpu"):
                 ax.cla()
-                _, images = plot_data(data, timelines,target=y[0],prediction=yhat[0].detach(),dim=0,figsize=figsize,masks=False,ax=ax)
+                ax.plot(timelines["reference"],y[0,:,0], color="darkred", label="True "+target_cols[0])
+                ax.plot(timelines["reference"],yhat[0,:,0].detach(), color="black", label="Predicted "+target_cols[0])
+                ax.plot(timelines["reference"],y[0,:,1], color="darkred", label="True "+target_cols[1],linestyle="--")
+                ax.plot(timelines["reference"],yhat[0,:,1].detach(), color="black", label="Predicted "+target_cols[1],linestyle="--")
+                ax.legend()
+                #_, images = plot_data(X, timelines, target=y[0],prediction=yhat[0].detach(),dim=0,figsize=figsize,masks=False,ax=ax)
                 plt.pause(0.5)
     print("")
