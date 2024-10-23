@@ -140,14 +140,21 @@ if __name__ == "__main__":
     d_out = y.shape[2]
     d_qk = 6
     M = len(X)
-    model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=3, activation="relu", layernorm=True, skipconnections=True, skiptemperature=True).to(device)
-    
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    layer_opts=dict(layernorm=False, skipconnections=False, skiptemperature=False)
+    model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=3, activation="relu", **layer_opts).to(device)
+    def init_weights_to_zero(model):
+    for param in model.parameters():
+        param.data.zero_()  # Set the data of each parameter to 0
+
+    # Initialize the model's parameters to 0
+    init_weights_to_zero(model)
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     from torcheval.metrics.functional import r2_score, binary_auprc, binary_auroc, binary_precision, binary_recall, binary_f1_score, binary_accuracy
     from torchmetrics.functional.regression.spearman import _spearman_corrcoef_compute
     L = []
 
-    num_epochs = 1000
+    num_epochs = 10000
     every_e = num_epochs // 20
     figsize = (15, 5)
     if plot and (device == "cpu"):
@@ -163,7 +170,7 @@ if __name__ == "__main__":
         loss.backward()
         
         optimizer.step()
-        scores = compute_scores(yhat[0].detach(), y[0].detach().to(yhat.device), target_cols)
+        #scores = compute_scores(yhat[0].detach(), y[0].detach().to(yhat.device), target_cols)
         L.append(loss.item())
         if (epoch % every_e) == 0:
             print(epoch, L[-1])
@@ -176,4 +183,6 @@ if __name__ == "__main__":
                 ax.legend()
                 #_, images = plot_data(X, timelines, target=y[0],prediction=yhat[0].detach(),dim=0,figsize=figsize,masks=False,ax=ax)
                 plt.pause(0.5)
+    scores = compute_scores(yhat[0].detach(), y[0].detach().to(yhat.device), target_cols)
+    print(scores)
     print("")
