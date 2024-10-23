@@ -78,7 +78,7 @@ def get_data(thetype="synthetic",device="cpu",tlim=None):
         y=[ydata,target_cols]
         X = corrupt(X, p=0.5)
         X, timelines = encode_time(X, device=device,tlim=tlim)
-        assert(y.shape[1] == X["reference"].shape[2])
+        assert(ydata.shape[1] == X["reference"].shape[2])
         #plt.close(); plt.plot(df[targets[1]].values); plt.show()
 
         print("")
@@ -108,6 +108,22 @@ def get_data(thetype="synthetic",device="cpu",tlim=None):
         X = prep_data(data, timelines, device=device)
     return X, timelines, y
 
+def compute_scores(yhat,y,names):
+    """y and yhat of size (N,T,q)
+    names a list of length q (the number of targets)"""
+    # Accuracy AUC  Kappa  Precision Recall F1-Score
+    out = {}
+    for i,thename in enumerate(names):
+        outtmp = dict(
+            binary_auroc=binary_auroc(yhat[...,i],y[...,i].int()),
+            binary_auprc=binary_auprc(yhat[...,i],y[...,i].int()),
+            binary_precision=binary_precision(yhat[...,i],y[...,i].int()),
+            binary_recall=binary_recall(yhat[...,i],y[...,i].int()),
+            binary_f1_score=binary_f1_score(yhat[...,i],y[...,i]),
+            binary_accuracy=binary_accuracy(yhat[...,i],y[...,i]))
+        out = {**out, **{thename+"_"+k: v for k,v in outtmp.items()}}
+    return out
+    
 if __name__ == "__main__":
 
     device = "cpu"
@@ -126,14 +142,11 @@ if __name__ == "__main__":
     M = len(X)
     model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=3, activation="relu", layernorm=True, skipconnections=True, skiptemperature=True).to(device)
     
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
-
+    optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
+    from torcheval.metrics.functional import r2_score, binary_auprc, binary_auroc, binary_precision, binary_recall, binary_f1_score, binary_accuracy
+    from torchmetrics.functional.regression.spearman import _spearman_corrcoef_compute
     L = []
-    def compute_scores(yhat,y,names=None):
-        """y and yhat of size (N,T,2)"""
-        # Accuracy AUC  Kappa  Precision Recall F1-Score
-        return 0
-        
+
     num_epochs = 1000
     every_e = num_epochs // 20
     figsize = (15, 5)
@@ -143,11 +156,11 @@ if __name__ == "__main__":
     for epoch in range(num_epochs):
         yhat = model(X)
 
-        loss = torch.nn.functional.mse_loss(yhat, y.to(device))
+        loss = torch.nn.functional.mse_loss(yhat, y.to(yhat.device))
         loss.backward()
-
+        
         optimizer.step()
-        scores = compute_scores(yhat, y.to(device),names=target_cols)
+        scores = compute_scores(yhat[0].detach(), y[0].detach().to(yhat.device), target_cols)
         L.append(loss.item())
         if (epoch % every_e) == 0:
             print(epoch, L[-1])

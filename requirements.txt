@@ -3,3 +3,6 @@ torch==2.4.1
 matplotlib
 pandas
 openpyxl
+torcheval
+torchmetrics
+
