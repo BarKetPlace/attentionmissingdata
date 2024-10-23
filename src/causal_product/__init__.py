@@ -40,7 +40,7 @@ def causal_dot_product(Q, K, V, tq, tkv, pool=None):
     return product / (normalization + 1e-6)
 
 def causal_dot_product_ref(Q, K, V, tq, tkv):
-    product_ref = causal_dot_numerator_product_ref(Q, K, V)
+    #product_ref = causal_dot_numerator_product_ref(Q, K, V)
 
     N, H, L = V.shape[:-1]
     
