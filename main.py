@@ -45,7 +45,7 @@ def corrupt(X, p=0):
             X[k] = v[idx_keep].copy()
     return X
 
-def get_data(thetype="synthetic",device="cpu",tlim=None):
+def get_data(thetype="synthetic",device="cpu",tlim=None,p=0.5):
     if thetype == "robot":
         # https://archive.ics.uci.edu/dataset/963/ur3+cobotops
         fname = "data/dataset_02052023.xlsx"
@@ -76,7 +76,7 @@ def get_data(thetype="synthetic",device="cpu",tlim=None):
         df[target_cols[0]] = df[target_cols[0]].fillna(0)
         ydata = torch.from_numpy(df[target_cols].values.astype(np.float32)[:tlim]).unsqueeze(0)
         y=[ydata,target_cols]
-        X = corrupt(X, p=0.5)
+        X = corrupt(X, p=p)
         X, timelines = encode_time(X, device=device,tlim=tlim)
         assert(ydata.shape[1] == X["reference"].shape[2])
         #plt.close(); plt.plot(df[targets[1]].values); plt.show()
@@ -132,7 +132,7 @@ if __name__ == "__main__":
         device = "cuda:0"
     plot=not (device=="cuda:0")
 
-    X, timelines, yout = get_data("robot",device=device, tlim=100)
+    X, timelines, yout = get_data("robot", device=device, tlim=100,p=0)
     
     y, target_cols = yout
 
@@ -143,11 +143,11 @@ if __name__ == "__main__":
     layer_opts=dict(layernorm=False, skipconnections=False, skiptemperature=False)
     model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=3, activation="relu", **layer_opts).to(device)
     def init_weights_to_zero(model):
-    for param in model.parameters():
-        param.data.zero_()  # Set the data of each parameter to 0
+        for param in model.parameters():
+            param.data.zero_()  # Set the data of each parameter to 0
 
     # Initialize the model's parameters to 0
-    init_weights_to_zero(model)
+    #init_weights_to_zero(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     from torcheval.metrics.functional import r2_score, binary_auprc, binary_auroc, binary_precision, binary_recall, binary_f1_score, binary_accuracy
@@ -155,13 +155,15 @@ if __name__ == "__main__":
     L = []
 
     num_epochs = 10000
-    every_e = num_epochs // 20
+    every_e = num_epochs // 200
     figsize = (15, 5)
     if plot and (device == "cpu"):
         fig, ax = plt.subplots(figsize=figsize)
 
     for epoch in range(num_epochs):
-        yhat = torch.nn.functional.sigmoid(model(X))
+        #yhat = torch.nn.functional.sigmoid(model(X))
+        yhat = torch.nn.functional.relu(model(X))
+
         loss0 = torch.nn.functional.cross_entropy(yhat[0,:,0], y[0,:,0].to(yhat.device))
         loss1 = torch.nn.functional.cross_entropy(yhat[0,:,1], y[0,:,1].to(yhat.device))
 
