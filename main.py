@@ -61,16 +61,16 @@ def get_data(thetype="synthetic",device="cpu",tlim=None):
             df[all_cols] = (df[all_cols]-themin)/(themax-themin)
 
         df["Timestamp"] = pd.to_datetime(df["Timestamp"].apply(lambda s: s.replace("\"","")),format="%Y-%m-%dT%H:%M:%S.%f%z")
-        timeline = (df["Timestamp"]-df["Timestamp"].iloc[0]).dt.total_seconds().values
+        timeline = (df["Timestamp"]-df["Timestamp"].iloc[0]).dt.total_seconds().values/60
         df.index = timeline
         df.drop(columns=["Timestamp"],inplace=True)
         M = 6
         reference_cols = ["Tool_current", "cycle"]
-        
+        df = df[(df[reference_cols].notna().sum(1)==2).values].copy()
         target_cols = ['Robot_ProtectiveStop', 'grip_lost']
 
         colnames = {**{"reference":reference_cols},**{"m{}".format(m):[s for s in df.columns if s.endswith(str(m))] for m in range(M)}}
-        X = {m: df[cols].copy() for m,cols in colnames.items()}
+        X = {m: df[cols].dropna().copy() for m,cols in colnames.items()}
         df.drop(columns=sum(list(colnames.values()),[]),inplace=True)
         
         df[target_cols[0]] = df[target_cols[0]].fillna(0)

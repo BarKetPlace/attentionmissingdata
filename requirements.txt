@@ -1,3 +1,5 @@
 torch==2.4.1
 #pytorch-fast-transformers
 matplotlib
+pandas
+openpyxl
