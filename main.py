@@ -74,7 +74,8 @@ def get_data(thetype="synthetic",device="cpu",tlim=None):
         df.drop(columns=sum(list(colnames.values()),[]),inplace=True)
         
         df[target_cols[0]] = df[target_cols[0]].fillna(0)
-        y = torch.from_numpy(df[target_cols].values.astype(np.float32)[:tlim]).unsqueeze(0)
+        ydata = torch.from_numpy(df[target_cols].values.astype(np.float32)[:tlim]).unsqueeze(0)
+        y=[ydata,target_cols]
         X = corrupt(X, p=0.5)
         X, timelines = encode_time(X, device=device,tlim=tlim)
         assert(y.shape[1] == X["reference"].shape[2])
@@ -103,7 +104,7 @@ def get_data(thetype="synthetic",device="cpu",tlim=None):
 
         data = {k: torch.rand(N, t, d) for i,(k,t,d) in enumerate(zip(names, T, D))}
 
-        y = compute_target(data, timelines, d_out)
+        y = [compute_target(data, timelines, d_out), None]
         X = prep_data(data, timelines, device=device)
     return X, timelines, y
 
@@ -115,7 +116,10 @@ if __name__ == "__main__":
         device = "cuda:0"
     plot=False
 
-    X, timelines, y = get_data("robot",device=device, tlim=1000)
+    X, timelines, yout = get_data("robot",device=device, tlim=1000)
+    
+    y, target_cols = yout
+
     modality_dimensions = {k: v.shape[-1] for k,v in X.items()}
     d_out = y.shape[2]
     d_qk = 6
@@ -125,7 +129,10 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     L = []
-    
+    def compute_scores(yhat,y,names=None):
+        """y and yhat of size (N,T,2)"""
+
+        return 0
     num_epochs = 1000
     every_e = num_epochs // 20
     figsize = (15, 5)
@@ -139,7 +146,7 @@ if __name__ == "__main__":
         loss.backward()
 
         optimizer.step()
-        
+        scores = compute_scores(yhat, y.to(device),names=target_cols)
         L.append(loss.item())
         if (epoch % every_e) == 0:
             print(epoch, L[-1])
