@@ -140,14 +140,15 @@ if __name__ == "__main__":
     d_out = y.shape[2]
     d_qk = 6
     M = len(X)
-    layer_opts=dict(layernorm=False, skipconnections=False, skiptemperature=False)
-    model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=3, activation="relu", **layer_opts).to(device)
-    def init_weights_to_zero(model):
+    layer_opts=dict(layernorm=True, skipconnections=True, skiptemperature=True)
+    model =  CAMD(modality_dimensions, d_out, d_qk, n_layers=2, activation="selu", **layer_opts).to(device)
+    def init_weights(model):
         for param in model.parameters():
-            param.data.zero_()  # Set the data of each parameter to 0
+            if param.ndim>1:
+                torch.nn.init.kaiming_normal_(param.data)#.kaiming_normal_()  # Set the data of each parameter to 0
 
     # Initialize the model's parameters to 0
-    #init_weights_to_zero(model)
+    init_weights(model)
 
     optimizer = torch.optim.Adam(model.parameters(), lr=5e-4)
     from torcheval.metrics.functional import r2_score, binary_auprc, binary_auroc, binary_precision, binary_recall, binary_f1_score, binary_accuracy
@@ -162,13 +163,14 @@ if __name__ == "__main__":
 
     for epoch in range(num_epochs):
         #yhat = torch.nn.functional.sigmoid(model(X))
-        yhat = torch.nn.functional.relu(model(X))
-
+        yhat = model(X)
+        #yhat = torch.nn.functional.softsign(yhat)
+        yhat = torch.nn.functional.sigmoid(yhat)
         loss0 = torch.nn.functional.cross_entropy(yhat[0,:,0], y[0,:,0].to(yhat.device))
         loss1 = torch.nn.functional.cross_entropy(yhat[0,:,1], y[0,:,1].to(yhat.device))
 
-        loss = (loss0+loss1)/2 #
-        #loss = torch.nn.functional.mse_loss(yhat, y.to(yhat.device))
+        #loss = (loss0+loss1)/2 #
+        loss = torch.nn.functional.mse_loss(yhat, y.to(yhat.device))
         loss.backward()
         
         optimizer.step()

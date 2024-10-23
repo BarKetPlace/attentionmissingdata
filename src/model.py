@@ -30,7 +30,9 @@ class CAMD(torch.nn.Module):
                                             layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) 
                 for mname,d_in in modality_dimensions.items()})
 
-        self.W_out = torch.nn.Linear(self.M*self.d_v , d_out)
+        self.W_out = MLP(self.M*self.d_v, [self.M*self.d_v]*n_layers, d_out, activation,
+                                            layernorm=layernorm, skipconnections=skipconnections, skiptemperature=skiptemperature) 
+                                            #torch.nn.Linear(self.M*self.d_v , d_out)
         self.pool = None
 
     def forward(self, calX, pool=None):
@@ -54,7 +56,7 @@ class CAMD(torch.nn.Module):
         Zout = Zout.transpose(1,2).flatten(start_dim=2,end_dim=3)
 
         yhat = self.W_out(Zout)#.sum(1)#[...,:self.d_out]
-        
+        #yhat = Zout.sum(1)
         return yhat
 
     def forward_modality(self, args, t1=None, Q=None):
