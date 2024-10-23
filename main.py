@@ -131,8 +131,9 @@ if __name__ == "__main__":
     L = []
     def compute_scores(yhat,y,names=None):
         """y and yhat of size (N,T,2)"""
-
+        # Accuracy AUC  Kappa  Precision Recall F1-Score
         return 0
+        
     num_epochs = 1000
     every_e = num_epochs // 20
     figsize = (15, 5)
